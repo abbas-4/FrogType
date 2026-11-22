@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--ft-bg);
+  --color-surface: var(--ft-surface);
+  --color-surface-2: var(--ft-surface-2);
+  --color-brand: var(--ft-brand);
+  --color-brand-hover: var(--ft-brand-hover);
+  --color-text: var(--ft-text);
+  --color-sub: var(--ft-sub);
+  --color-error: var(--ft-error);
+  --animate-fade-in: fade-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+:root,
+[data-theme="frog"] {
+  --ft-bg: #18181b;
+  --ft-surface: #27272a;
+  --ft-surface-2: #3f3f46;
+  --ft-brand: #22c55e;
+  --ft-brand-hover: #16a34a;
+  --ft-text: #fafafa;
+  --ft-sub: #a1a1aa;
+  --ft-error: #ef4444;
+  color-scheme: dark;
+}
+
+[data-theme="swamp"] {
+  --ft-bg: #0f1a14;
+  --ft-surface: #18271e;
+  --ft-surface-2: #24382b;
+  --ft-brand: #4ade80;
+  --ft-brand-hover: #22c55e;
+  --ft-text: #ecfdf5;
+  --ft-sub: #8fa89a;
+  --ft-error: #f87171;
+  color-scheme: dark;
+}
+
+[data-theme="lily"] {
+  --ft-bg: #f7f7f5;
+  --ft-surface: #ebebe7;
+  --ft-surface-2: #d9d9d3;
+  --ft-brand: #15803d;
+  --ft-brand-hover: #166534;
+  --ft-text: #18181b;
+  --ft-sub: #6b6b73;
+  --ft-error: #dc2626;
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--ft-bg);
+  color: var(--ft-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ft-brand);
+  outline-offset: 2px;
+}
+
+.caret {
+  transition: transform 90ms linear;
+  will-change: transform;
+}
+
+.caret-idle {
+  animation: caret-blink 1s step-end infinite;
+}
+
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+
+.words {
+  transition: transform 150ms ease-out;
+}
+
+/* reduced motion: system preference or explicit setting */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="off"]) *,
+  html:not([data-motion="off"]) *::before,
+  html:not([data-motion="off"]) *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+html[data-motion="on"] *,
+html[data-motion="on"] *::before,
+html[data-motion="on"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
