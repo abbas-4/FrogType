@@ -29,7 +29,7 @@ Settings that code cannot enforce. Do these before a public launch, and re-check
 | Setting | Value | Why |
 |---|---|---|
 | Email confirmations | **On** | Blocks sign-ups with other people's emails |
-| Minimum password length | **10** | Matches the UI (`passwordProblem`) |
+| Minimum password length | **8** | Matches the UI (`passwordProblem`) |
 | Password requirements | **Lowercase, uppercase letters and digits** | Matches the UI |
 | Leaked-password protection | **On** (Pro plan) | Rejects known-breached passwords |
 | Secure password change | **On** | Changing a password requires a recent sign-in |

@@ -34,7 +34,7 @@ Details, evidence and residual risk for each item are in [SECURITY-AUDIT.md](SEC
 | N-8 Username race | Sign-up failed with a 500 | Fallback username | Fixed and verified |
 | N-9 Client leaderboard dates | Client timestamp shown | Server time | Fixed and verified |
 | N-10 Mixed-difficulty boards | Easy, punctuation and number tests ranked together | Standard configuration only, labelled | Fixed and verified |
-| N-11 Weak local auth config | 6-character passwords, no confirmations, 1 h links | 10+ characters with classes, confirmations, 15 min links, secure password change | Fixed (local); hosted settings in checklist |
+| N-11 Weak local auth config | 6-character passwords, no confirmations, 1 h links | 8+ characters with classes (originally 10), confirmations, 15 min links, secure password change | Fixed (local); hosted settings in checklist |
 | N-12 Raw auth errors, no password max length | Messages could vary by account state | Generic messages, max 72 | Fixed and verified |
 | N-13 Tokens in localStorage | No CSP | Strict CSP; no HTML sinks | Mitigated with residual risk |
 

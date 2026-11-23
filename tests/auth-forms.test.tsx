@@ -60,7 +60,7 @@ describe('SignUpForm', () => {
 
     expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
     expect(screen.getByText('Use only letters, numbers and underscores.')).toBeInTheDocument();
-    expect(screen.getByText('Password must be at least 10 characters.')).toBeInTheDocument();
+    expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();
     expect(screen.getByText('The passwords do not match.')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('Email')).toHaveFocus(); // first invalid field

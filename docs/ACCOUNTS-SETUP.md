@@ -23,7 +23,7 @@ Replace `<domain>` with your public origin, for example `frogtype.example.com`, 
 | | Confirm email | **On** |
 | | Secure email change | **On** (both the old and the new address must confirm) |
 | | Secure password change | On |
-| | Minimum password length | 10 |
+| | Minimum password length | 8 |
 | | Password requirements | Lowercase, uppercase letters and digits |
 | | Leaked password protection | On (Pro plan) |
 | | Email OTP expiration | 900 seconds |

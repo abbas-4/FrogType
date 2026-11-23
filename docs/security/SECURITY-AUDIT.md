@@ -87,7 +87,7 @@ Severity reflects impact if the cloud features are deployed. Status vocabulary: 
 - **Fix:**
   - The auth client uses the PKCE flow, so a recovery code works only in the browser that requested it.
   - The reset link lands on `/reset-password`, which recognises the `PASSWORD_RECOVERY` event and only then shows a new-password form.
-  - Policy: at least 10 characters, upper- and lower-case letters and digits, max 72. Enforced client-side and server-side (`config.toml` `minimum_password_length`, `password_requirements`, `secure_password_change`).
+  - Policy: at least 8 characters (lowered from 10 by product decision), upper- and lower-case letters and digits, max 72. Enforced client-side and server-side (`config.toml` `minimum_password_length`, `password_requirements`, `secure_password_change`).
   - `otp_expiry` is 15 min.
   - After a successful change, all other sessions are revoked.
   - Invalid, reused, tampered and expired links get a clear message and a re-request form.

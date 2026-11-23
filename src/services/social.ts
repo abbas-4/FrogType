@@ -116,9 +116,12 @@ export async function updateProfile(userId: string, patch: ProfilePatch): Promis
   throw error;
 }
 
-/** Mirrors supabase/config.toml (minimum_password_length = 10, lower_upper_letters_digits). Set the same in the hosted project. */
+/** Mirrors supabase/config.toml minimum_password_length. Set the same in the hosted project (Auth > Providers > Email). */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/** Mirrors supabase/config.toml (minimum_password_length, lower_upper_letters_digits). */
 export function passwordProblem(password: string): string | null {
-  if (password.length < 10) return 'Password must be at least 10 characters.';
+  if (password.length < MIN_PASSWORD_LENGTH) return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
   if (password.length > 72) return 'Password must be at most 72 characters.';
   if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) return 'Password needs an uppercase letter, a lowercase letter and a number.';
   return null;

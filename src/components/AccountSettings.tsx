@@ -5,7 +5,7 @@ import { ProfileEditor } from './ProfileEditor';
 import { Button, Card, Notice } from './ui';
 import { useAuth } from '../state/auth';
 import { pushToast } from '../state/toasts';
-import { changeEmail, changePassword, deleteAccount, EMAIL_RE, passwordProblem, signOut } from '../services/social';
+import { changeEmail, changePassword, deleteAccount, EMAIL_RE, MIN_PASSWORD_LENGTH, passwordProblem, signOut } from '../services/social';
 import { exportMyData } from '../services/cloud';
 import { errorMessage, isSupabaseConfigured, landingAuth } from '../services/supabase';
 import { clearDecision } from '../services/sync';
@@ -158,7 +158,7 @@ function PasswordSection({ email }: { email: string }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
   const [submitted, setSubmitted] = useState(false);
-  const nextError = (submitted || next.length >= 10) && next ? passwordProblem(next) : submitted && !next ? 'Enter a new password.' : null;
+  const nextError = (submitted || next.length >= MIN_PASSWORD_LENGTH) && next ? passwordProblem(next) : submitted && !next ? 'Enter a new password.' : null;
   const confirmError = (submitted || confirm.length >= next.length) && confirm !== next ? 'The passwords do not match.' : null;
 
   const submit = async (e: React.FormEvent) => {
