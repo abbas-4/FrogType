@@ -12,7 +12,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:db": "supabase test db"
+    "test:db": "supabase test db",
+    "check:secrets": "node scripts/check-dist-secrets.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e:online": "playwright test --config playwright.online.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

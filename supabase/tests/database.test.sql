@@ -1,9 +1,9 @@
--- pgTAP tests for RLS policies and server-side validation.
+-- pgTAP tests for RLS policies and server-side validation (expectations updated for 20261123000000_security_hardening.sql).
 -- Run with: supabase test db   (or see README for running against the Supabase Postgres image)
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
-select plan(24);
+select plan(25);
 
 -- fixtures (as superuser)
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -37,7 +37,7 @@ select results_eq(
 -- ---------------------------------------------------------------- as anon
 set local role anon;
 select throws_ok($$ select submit_test(tests.payload(gen_random_uuid(), 50)) $$, '42501', null, 'anon cannot submit tests');
-select is((select count(*) from typing_tests)::int, 0, 'anon sees no tests');
+select throws_ok($$ select count(*) from typing_tests $$, '42501', null, 'anon has no table access at all (hardening migration)');
 
 -- ---------------------------------------------------------------- as alice
 reset role;
@@ -45,22 +45,22 @@ set local role authenticated;
 set local request.jwt.claims to '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 set local request.jwt.claim.sub to '11111111-1111-1111-1111-111111111111'; -- older auth.uid() variant
 
-select is((submit_test(tests.payload('aaaaaaaa-0000-0000-0000-000000000001', 60)) ->> 'ranked')::boolean, true, 'valid test accepted and ranked');
-select throws_like($$ select submit_test(tests.payload(gen_random_uuid(), 61)) $$, '%rate limited%', 'second submission within 2s is rate limited');
+select is(submit_test(tests.payload('aaaaaaaa-0000-0000-0000-000000000001', 60)) - 'flags' - 'wpm' - 'accuracy', '{"accepted": true, "duplicate": false, "ranked": false, "verified": false}'::jsonb, 'valid test without a server challenge is accepted but never ranked');
+select lives_ok($$ select submit_test(tests.payload('aaaaaaaa-0000-0000-0000-000000000002', 61)) $$, 'back-to-back submissions are allowed (offline queue can drain; limit is 30/min)');
 select throws_ok(
   $$ insert into typing_tests (id, user_id, created_at, mode, mode2, wpm, raw, accuracy, consistency, chars, duration_ms, words_typed, language, punctuation, numbers, difficulty)
      values (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', now(), 'time', 30, 250, 250, 100, 100, '{}', 30000, 100, 'english', false, false, 'normal') $$,
   '42501', null, 'direct insert into typing_tests is blocked');
-update typing_tests set wpm = 299;
-select is((select wpm from typing_tests)::numeric, 60.00, 'tests cannot be updated by clients (no update policy)');
+select throws_ok($$ update typing_tests set wpm = 299 $$, '42501', null, 'tests cannot be updated by clients (no update grant)');
+select is((select wpm from typing_tests where id = 'aaaaaaaa-0000-0000-0000-000000000001')::numeric, 60.00, 'stored wpm unchanged');
 select throws_ok($$ insert into xp_transactions (user_id, key, amount, reason) values ('11111111-1111-1111-1111-111111111111', 'x', 500, 'x') $$, '42501', null, 'xp cannot be inserted directly');
 select throws_ok($$ insert into leaderboard_entries values ('11111111-1111-1111-1111-111111111111', 'time', 30, 'aaaaaaaa-0000-0000-0000-000000000001', 299, 100, 30000, now()) $$, '42501', null, 'leaderboard cannot be written directly');
-select is((select count(*) from typing_tests)::int, 1, 'alice sees her own test');
+select is((select count(*) from typing_tests)::int, 2, 'alice sees her own tests');
 
 select lives_ok($$ select send_friend_request('bob') $$, 'alice sends a friend request');
 select lives_ok($$ select merge_progress('[{"key":"test:aaaaaaaa-0000-0000-0000-000000000001","amount":20,"reason":"ok"},{"key":"streak:2026-11-22","amount":9999,"reason":"cheat"},{"key":"test:bbbbbbbb-0000-0000-0000-000000000000","amount":10,"reason":"fake"}]', '{"first-test":"x","not-real":"x"}', '{}') $$, 'merge_progress runs');
-select is((select coalesce(sum(amount), 0) from xp_transactions)::int, 20, 'only xp tied to real data and within caps is kept');
-select is((select count(*) from user_achievements)::int, 1, 'unknown achievement ids are ignored');
+select is((select count(*) from xp_transactions where key !~ '^test:aaaaaaaa-0000-0000-0000-00000000000[12]$' or verified)::int, 0, 'client xp claims are ignored; only server-derived, unverified test xp exists');
+select is((select count(*) from user_achievements)::int, 0, 'client achievement claims are ignored (no verified tests yet)');
 
 -- ---------------------------------------------------------------- as bob
 reset role;
@@ -79,7 +79,7 @@ select lives_ok($$ select respond_friend_request((select id from friendships lim
 -- ---------------------------------------------------------------- back to superuser for assertions
 reset role;
 select is((select username from profiles where id = '11111111-1111-1111-1111-111111111111'), 'alice', 'bob could not rename alice');
-select is((select count(*) from get_leaderboard('global', 'time', 30))::int, 1, 'leaderboard shows ranked result');
+select is((select count(*) from get_leaderboard('global', 'time', 30))::int, 0, 'unverified results never reach the leaderboard');
 
 select * from finish();
 rollback;

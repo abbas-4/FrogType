@@ -3,11 +3,14 @@ import { Button, Notice } from './ui';
 import { resetPassword, signIn, signUp } from '../services/social';
 import { errorMessage } from '../services/supabase';
 
-export function AuthForm() {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+export function AuthForm({ initialMode = 'signin' }: { initialMode?: 'signin' | 'signup' | 'reset' }) {
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  // FT-07: visibility is opt-in, unchecked by default
+  const [publicProfile, setPublicProfile] = useState(false);
+  const [showOnLeaderboard, setShowOnLeaderboard] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null);
 
@@ -18,7 +21,7 @@ export function AuthForm() {
     try {
       if (mode === 'signin') await signIn(email, password);
       else if (mode === 'signup') {
-        const { needsConfirmation } = await signUp(email, password, username);
+        const { needsConfirmation } = await signUp(email, password, username, { publicProfile, showOnLeaderboard });
         if (needsConfirmation) setMsg({ text: 'Check your email to confirm your account, then sign in.', tone: 'info' });
       } else {
         await resetPassword(email);
@@ -54,8 +57,34 @@ export function AuthForm() {
       {mode !== 'reset' && (
         <label className="block text-sm text-sub">
           Password
-          <input className={input} type="password" required minLength={8} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            className={input}
+            type="password"
+            required
+            minLength={mode === 'signup' ? 10 : undefined}
+            maxLength={72}
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            aria-describedby={mode === 'signup' ? 'pw-rules' : undefined}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </label>
+      )}
+      {mode === 'signup' && (
+        <p id="pw-rules" className="-mt-2 text-xs text-sub">At least 10 characters with an uppercase letter, a lowercase letter and a number.</p>
+      )}
+      {mode === 'signup' && (
+        <fieldset className="space-y-2 text-sm text-sub">
+          <legend className="mb-1">Privacy (you can change these any time in Settings)</legend>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" className="mt-1 accent-[var(--ft-brand)]" checked={publicProfile} onChange={(e) => setPublicProfile(e.target.checked)} />
+            <span>Make my profile public (others can see my stats and achievements)</span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" className="mt-1 accent-[var(--ft-brand)]" checked={showOnLeaderboard} onChange={(e) => setShowOnLeaderboard(e.target.checked)} />
+            <span>Show my username and best results on public leaderboards</span>
+          </label>
+        </fieldset>
       )}
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={busy}>

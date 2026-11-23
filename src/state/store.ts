@@ -3,7 +3,7 @@ import type { Progress, Settings } from '../types';
 import {
   loadProgress,
   loadSettings,
-  PROGRESS_KEY,
+  progressKey,
   saveProgress,
   saveSettings,
   SETTINGS_KEY,
@@ -26,14 +26,26 @@ function createStore<T>(initial: T, persist: (v: T) => T | void) {
   };
 }
 
+/** Account whose progress is active: null = guest. Changed only by the auth layer when the session identity changes. */
+let owner: string | null = null;
+
 export const settingsStore = createStore<Settings>(loadSettings(), saveSettings);
-export const progressStore = createStore<Progress>(loadProgress(), saveProgress);
+export const progressStore = createStore<Progress>(loadProgress(null), (p) => saveProgress(p, owner));
+
+export const progressOwner = () => owner;
+
+/** FT-03: swap the in-memory progress to another account's namespace immediately (sign-in, sign-out, account switch). */
+export function activateProgressOwner(next: string | null) {
+  if (next === owner) return;
+  owner = next;
+  progressStore.set(loadProgress(owner), false);
+}
 
 // Keep multiple tabs in sync.
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === SETTINGS_KEY) settingsStore.set(loadSettings(), false);
-    if (e.key === PROGRESS_KEY) progressStore.set(loadProgress(), false);
+    if (e.key === progressKey(owner)) progressStore.set(loadProgress(owner), false);
   });
 }
 

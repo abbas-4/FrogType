@@ -18,20 +18,35 @@ export interface EngineState {
   /** keystroke / error counters at the last sample boundary */
   sampleKeys: number;
   sampleErrors: number;
+  /** FT-01: every applied key with its time since the first keystroke, so the server can replay the test */
+  keylog: { k: string; t: number[] };
+  /** server challenge whose passage is in `words` (null = local, unranked words) */
+  challengeId: string | null;
 }
 
 export type EngineAction =
   | { type: 'char'; char: string; now: number }
   | { type: 'space'; now: number }
-  | { type: 'backspace'; word: boolean }
+  | { type: 'backspace'; word: boolean; now?: number }
   | { type: 'tick'; now: number }
   | { type: 'timeout' }
   | { type: 'append'; words: string[] }
-  | { type: 'reset'; words: string[]; limit: Limit };
+  | { type: 'reset'; words: string[]; limit: Limit; challengeId?: string | null };
 
 const MAX_EXTRA = 10;
+const MAX_KEYLOG = 8000; // server rejects longer logs (supabase ft_replay)
+export const KEY_BACKSPACE = '\b';
+export const KEY_DELETE_WORD = '\x17';
 
-export function initEngine(words: string[], limit: Limit): EngineState {
+/** Appends one event (relative ms, rounded so the log stays monotonic) unless the log is full; the server rejects truncated logs. */
+function log(s: EngineState, key: string, now: number | undefined, startedAt: number): EngineState['keylog'] {
+  const { k, t } = s.keylog;
+  if (k.length >= MAX_KEYLOG) return s.keylog;
+  const at = now === undefined ? (t[t.length - 1] ?? 0) : Math.max(t[t.length - 1] ?? 0, Math.round(now - startedAt));
+  return { k: k + key, t: [...t, at] };
+}
+
+export function initEngine(words: string[], limit: Limit, challengeId: string | null = null): EngineState {
   return {
     words,
     inputs: [''],
@@ -46,6 +61,8 @@ export function initEngine(words: string[], limit: Limit): EngineState {
     samples: [],
     sampleKeys: 0,
     sampleErrors: 0,
+    keylog: { k: '', t: [] },
+    challengeId,
   };
 }
 
@@ -91,7 +108,7 @@ function bump(stats: CharStats, ch: string, error: boolean): CharStats {
 export function engineReducer(s: EngineState, a: EngineAction): EngineState {
   switch (a.type) {
     case 'reset':
-      return initEngine(a.words, a.limit);
+      return initEngine(a.words, a.limit, a.challengeId ?? null);
     case 'append':
       return { ...s, words: [...s.words, ...a.words] };
     case 'tick': {
@@ -133,6 +150,7 @@ export function engineReducer(s: EngineState, a: EngineAction): EngineState {
         correctKeystrokes: s.correctKeystrokes + (correct ? 1 : 0),
         charStats: expected !== undefined ? bump(s.charStats, expected, !correct) : s.charStats,
         bigramErrors,
+        keylog: log(s, a.char, a.now, startedAt),
       };
       if (s.limit.kind === 'words' && s.wordIndex === s.words.length - 1 && nextInput === word) {
         return finish(next, a.now);
@@ -156,6 +174,7 @@ export function engineReducer(s: EngineState, a: EngineAction): EngineState {
         wordIndex,
         keystrokes: s.keystrokes + 1,
         correctKeystrokes: s.correctKeystrokes + (correct ? 1 : 0),
+        keylog: log(s, ' ', a.now, s.startedAt),
       };
       if (s.limit.kind === 'words' && wordIndex >= s.words.length) {
         return finish(next, a.now);
@@ -166,15 +185,16 @@ export function engineReducer(s: EngineState, a: EngineAction): EngineState {
       if (s.finishedAt !== null) return s;
       const input = s.inputs[s.wordIndex] ?? '';
       const inputs = s.inputs.slice();
+      const keylog = s.startedAt === null ? s.keylog : log(s, a.word ? KEY_DELETE_WORD : KEY_BACKSPACE, a.now, s.startedAt);
       if (input.length > 0) {
         inputs[s.wordIndex] = a.word ? '' : input.slice(0, -1);
-        return { ...s, inputs };
+        return { ...s, inputs, keylog };
       }
       const prev = s.wordIndex - 1;
       // Only allow stepping back into a word that has a mistake.
       if (prev >= 0 && inputs[prev] !== s.words[prev]) {
         if (a.word) inputs[prev] = '';
-        return { ...s, inputs, wordIndex: prev };
+        return { ...s, inputs, wordIndex: prev, keylog };
       }
       return s;
     }

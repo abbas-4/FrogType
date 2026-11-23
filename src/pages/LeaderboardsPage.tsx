@@ -43,7 +43,7 @@ export default function LeaderboardsPage() {
 
   return (
     <div>
-      <PageTitle sub="Best English result per user. Standard time and word modes only.">Leaderboards</PageTitle>
+      <PageTitle sub="Best verified result per user: English, normal difficulty, no punctuation or numbers, standard time and word modes.">Leaderboards</PageTitle>
       {!isSupabaseConfigured ? (
         <Notice>
           Leaderboards need online features. This installation has no Supabase project configured, so no rankings are shown (and none are faked). See the README to
@@ -53,7 +53,8 @@ export default function LeaderboardsPage() {
         <>
           <p className="mb-4 flex items-start gap-2 text-sm text-sub">
             <ShieldAlert size={16} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
-            Results are plausibility-checked and rate-limited on the server, but they are computed in the browser and are therefore <strong className="font-medium text-text">unverified</strong>.
+            Only results typed on a passage issued by the server and re-scored there from your keystrokes are listed. This blocks forged and replayed scores, but a
+            modified client or a typing bot can still produce a plausible keystroke log, so rankings are <strong className="font-medium text-text">not proof of human typing</strong>.
           </p>
           <div className="mb-4 flex flex-wrap items-center gap-4">
             <Segmented label="Leaderboard scope" value={scope} onChange={setScope} options={[{ value: 'global', label: 'Global' }, { value: 'friends', label: 'Friends' }]} />
@@ -133,7 +134,7 @@ function FriendsPanel() {
         className="flex max-w-md gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void act(() => sendFriendRequest(name), `Request sent to ${name}.`).then(() => setName(''));
+          void act(() => sendFriendRequest(name), `If ${name} exists, they will see your request.`).then(() => setName(''));
         }}
       >
         <label htmlFor="friend-name" className="sr-only">Friend's username</label>

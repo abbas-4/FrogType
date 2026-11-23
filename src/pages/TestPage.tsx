@@ -3,7 +3,11 @@ import { ModeBar } from '../components/ModeBar';
 import { TypingTest } from '../components/TypingTest';
 import type { WordSource } from '../hooks/useTypingTest';
 import { saveResult } from '../services/results';
+import { issueChallenge } from '../services/cloud';
+import { useAuth } from '../state/auth';
 import { useSettings } from '../state/store';
+
+const RANKED: Record<'time' | 'words', number[]> = { time: [15, 30, 60, 120], words: [10, 25, 50, 100] };
 
 export function TestPage() {
   const settings = useSettings();
@@ -13,11 +17,21 @@ export function TestPage() {
     () => ({ language: settings.language, difficulty: settings.difficulty, punctuation: settings.punctuation, numbers: settings.numbers }),
     [settings.language, settings.difficulty, settings.punctuation, settings.numbers],
   );
+  const signedIn = useAuth().user !== null;
+  // FT-01: only the standard English board configuration can rank, and only with a server-issued passage
+  const ranked =
+    signedIn && options.language === 'english' && options.difficulty === 'normal' && !options.punctuation && !options.numbers && RANKED[mode].includes(mode2);
   const source = useMemo<WordSource>(
-    () => ({ kind: 'generated', options, limit: mode === 'time' ? { kind: 'time', seconds: mode2 } : { kind: 'words' }, count: mode2 }),
-    [options, mode, mode2],
+    () => ({
+      kind: 'generated',
+      options,
+      limit: mode === 'time' ? { kind: 'time', seconds: mode2 } : { kind: 'words' },
+      count: mode2,
+      challenge: ranked ? () => issueChallenge(mode, mode2).catch(() => null) : undefined,
+    }),
+    [options, mode, mode2, ranked],
   );
-  const key = `${mode}-${mode2}-${options.language}-${options.difficulty}-${options.punctuation}-${options.numbers}`;
+  const key = `${mode}-${mode2}-${options.language}-${options.difficulty}-${options.punctuation}-${options.numbers}-${ranked}`;
   const meta = useMemo(() => ({ mode, mode2 }), [mode, mode2]);
   const onComplete = useCallback((r: Parameters<typeof saveResult>[0]) => saveResult(r), []);
 

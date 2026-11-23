@@ -26,7 +26,10 @@ Requires Node 20+ (developed on Node 24).
 | `npm run typecheck` | TypeScript only |
 | `npm test` | Vitest unit + component tests |
 | `npm run test:e2e` | Playwright end-to-end tests (builds and serves on :4173). Run `npx playwright install chromium` once first |
-| `npm run test:db` | pgTAP database tests via the Supabase CLI |
+| `npm run test:db` | pgTAP database tests (RLS, grants, abuse cases) against the local Supabase stack |
+| `npm run test:integration` | HTTP attack tests with real GoTrue users against the local stack |
+| `npm run test:e2e:online` | Playwright journeys against the local stack (accounts, sync isolation, ranked test, recovery, deletion) |
+| `npm run check:secrets` | Fails if a privileged key ends up in `dist/` |
 
 ## Features
 
@@ -48,8 +51,8 @@ Without configuration, Profile and Leaderboards say plainly that online features
 1. Create a project at [supabase.com](https://supabase.com).
 2. Apply the schema, using either of these:
    - Supabase CLI: `supabase init` (keeps the existing `supabase/migrations`), `supabase link --project-ref <ref>`, then `supabase db push`.
-   - Dashboard: paste `supabase/migrations/20261122000000_init.sql` into the SQL editor and run it.
-3. Under **Authentication → Providers**, make sure Email is enabled. Under **URL Configuration**, add your site URL (e.g. `http://localhost:5173`) for confirmation and reset links.
+   - Dashboard: run every file in `supabase/migrations/` in order in the SQL editor.
+3. Under **Authentication → Providers**, make sure Email is enabled. Under **URL Configuration**, set your site URL and add exactly `<site>/reset-password` and `<site>/profile` as redirect URLs. Apply the auth settings in [the security checklist](docs/security/SECURITY-CHECKLIST.md#authentication) (confirmations, password policy, rate limits, SMTP).
 4. Copy `.env.example` to `.env.local` and fill in your values:
    ```bash
    VITE_SUPABASE_URL=https://<ref>.supabase.co
@@ -74,22 +77,23 @@ Without configuration, Profile and Leaderboards say plainly that online features
 - **No client writes to stats tables.** There are no INSERT/UPDATE policies on tests, XP, achievements, lesson progress, leaderboard or challenge tables. All writes go through `SECURITY DEFINER` functions:
   - `submit_test`: validates every field, checks that WPM is backed by the reported characters and that time-mode duration matches, rate-limits (1 per 2 s, 1000/day), is idempotent by id, and ranks only fresh, standard-mode English results.
   - `import_tests`: one-time migration, at most 200 per call and 3000 per hour, stored unranked.
-  - `merge_progress`: only accepts XP keys that reference the user's real tests, real lessons or valid dates, with per-type caps, plus known achievement ids and clamped lesson stats.
+  - `issue_challenge` + `submit_test`: ranked tests are typed on a single-use passage issued by the server; the server replays the keystroke log and recomputes every metric before ranking.
+  - `sync_progress` (and the legacy `merge_progress`): XP and achievements are derived from server records only; client claims are ignored.
   - `get_leaderboard`, `get_public_profile`, `list_friends`, `send_friend_request`, `respond_friend_request`.
 - **Server-side daily targets.** The server computes daily challenge targets itself (`ft_daily_targets`, a port of the client's FNV-1a formula, checked for parity by tests). Completion is decided server-side.
 - **Locked-down execute rights.** `EXECUTE` is revoked from `PUBLIC` and granted per function. Profile updates are restricted by column (`username`, `is_public`, `show_on_leaderboard`).
 
 ## Testing
 
-- `npm test` runs 56 Vitest tests: WPM, accuracy and consistency math, the engine (timer start, exact time-mode completion, late ticks, post-limit keystrokes, backspace rules, words-mode completion, restart, validity), XP, levels, dedupe, achievements, streaks, lessons, daily-challenge determinism, settings/progress persistence and tamper resistance, analysis thresholds, local/cloud merge, behavior when unconfigured or signed out, and React component tests (highlighting, completion, Tab restart, no HTML injection).
-- `npm run test:e2e` runs 8 Playwright journeys: landing test and caret position, words-mode completion persisted to stats, automatic time-mode completion, Tab restart, settings persistence, passing a lesson, honest "not configured" states, and keyboard navigation.
-- `supabase/tests/database.test.sql` has 24 pgTAP checks: signup trigger, RLS isolation between users, blocked direct writes, column-level profile protection, validation and rate-limit rejections, XP/achievement filtering, friend flow, leaderboard, and daily-target parity. Run them with `supabase test db`, or against the Supabase Postgres image:
-  ```bash
-  docker run -d --rm --name ft-pg -e POSTGRES_PASSWORD=postgres public.ecr.aws/supabase/postgres:17.11.0.006
-  docker exec -i ft-pg psql -U postgres -h localhost -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261122000000_init.sql
-  docker exec -i ft-pg psql -U supabase_admin -h localhost -d postgres < supabase/tests/database.test.sql
-  docker stop ft-pg
-  ```
+Unit tests run anywhere. Everything else needs the isolated local stack: `npx supabase start` (Docker; ports 553xx, see `supabase/config.toml`).
+
+- `npm test`: Vitest. Engine, metrics, progression, storage validation (fuzzed), per-account isolation and sync races, config guards, auth helpers, components.
+- `npm run test:e2e`: Playwright against the production build without Supabase, served with the production security headers.
+- `npm run test:db`: pgTAP (`supabase/tests/*.sql`). RLS, grants, `search_path`, challenge/replay abuse, forged progression, rate limits, friends, privacy, deletion.
+- `npm run test:integration`: real HTTP attacks with synthetic GoTrue users, including concurrency, recovery links via mailpit, export and deletion.
+- `npm run test:e2e:online`: browser journeys against the local stack.
+
+Full results and the security audit are in [docs/security](docs/security/).
 
 ## Project structure
 
@@ -111,19 +115,21 @@ supabase/       migrations + pgTAP tests
 
 ## Security notes and known limitations
 
-- **Leaderboard results are unverified.** Results are computed in the browser. The server rejects malformed, implausible, inconsistent and rate-limited submissions, but a determined user can still forge a plausible result. The UI labels leaderboards as unverified. Real verification would need server-side keystroke replay; see the improvements below.
-- **Achievements and lesson completion synced from the client are trusted** once they pass basic checks. XP is limited to keys tied to real server data, but streak and daily keys are only date-checked.
-- **Local data is not encrypted.** Anyone with access to the browser profile can read or edit it. Tampered local data is sanitized on load but can still inflate *local* stats.
-- After signing out, synced history stays in this browser's local storage. Use **Settings → Clear local data** on shared machines.
-- The daily challenge uses the device clock's UTC date. A wrong clock shows a different day's passage, and the server only accepts today's or yesterday's challenge.
-- Some Android keyboards don't send reliable key events. Input falls back to the `input` event, and backspace may not register on those keyboards.
-- Before deploying: enable Supabase email confirmation, set allowed redirect URLs, consider CAPTCHA on sign-up (Supabase Auth setting), and keep Supabase's own API rate limits on.
+See [docs/security/SECURITY-AUDIT.md](docs/security/SECURITY-AUDIT.md) for the full audit and [SECURITY-CHECKLIST.md](docs/security/SECURITY-CHECKLIST.md) for the production settings you must configure. Short version:
+
+- **Leaderboards rank only server-verified results.** The passage comes from the server and the server re-scores the keystroke log, so edited scores and replays don't rank. A bot or modified client that types the real passage with human-like timing still can; rankings are not proof of human typing.
+- **Lesson and daily-challenge rewards** are recorded server-side but marked unverified, because those passages are generated in the browser. Public profiles show verified XP and achievements only.
+- **Accounts are private by default.** Public profile and leaderboard visibility are opt-in at sign-up and in Settings.
+- **Each account has its own local storage** in the browser. Guest progress moves into an account only if you accept. Use **Sign out and remove my data from this browser** on shared machines.
+- Local data is not encrypted, and tampered local data only affects local stats.
+- The daily challenge uses the device clock's UTC date.
+- Some Android keyboards don't send reliable key events.
 
 ## Recommended improvements
 
-1. Server-side verification: send keystroke timing logs and replay them in an Edge Function before ranking.
+1. Moderation tools for leaderboard outliers (store flagged keylogs for review).
 2. Store the daily passage centrally (or version word lists) so old challenges stay reproducible after word-list changes.
 3. More languages and larger word lists; quote mode.
 4. Heatmap keyboard visualization of per-key error rates.
 5. PWA/offline install and background sync.
-6. Account deletion and data export flows in the UI (the database already cascades deletes).
+6. CAPTCHA on sign-up and reset (see the security checklist).

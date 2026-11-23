@@ -70,17 +70,40 @@ export async function updateProfile(userId: string, patch: { username?: string; 
   if (error) throw error.code === '23505' ? new Error('That username is taken.') : error;
 }
 
-export async function signUp(email: string, password: string, username: string) {
+/** Mirrors supabase/config.toml (minimum_password_length = 10, lower_upper_letters_digits). Set the same in the hosted project. */
+export function passwordProblem(password: string): string | null {
+  if (password.length < 10) return 'Password must be at least 10 characters.';
+  if (password.length > 72) return 'Password must be at most 72 characters.';
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) return 'Password needs an uppercase letter, a lowercase letter and a number.';
+  return null;
+}
+
+/** Turns auth errors into messages that never reveal whether an email has an account. */
+function authError(e: { message?: string; code?: string; status?: number }): Error {
+  if (e.status === 429 || /rate limit|too many/i.test(e.message ?? '')) return new Error('Too many attempts. Please wait a few minutes and try again.');
+  if (e.code === 'weak_password') return new Error(e.message ?? 'Password is too weak.');
+  return new Error(e.message ?? 'Something went wrong. Please try again.');
+}
+
+export async function signUp(email: string, password: string, username: string, consent: { publicProfile: boolean; showOnLeaderboard: boolean } = { publicProfile: false, showOnLeaderboard: false }) {
   if (!USERNAME_RE.test(username)) throw new Error('Username must be 3–20 letters, numbers or underscores.');
-  if (password.length < 8) throw new Error('Password must be at least 8 characters.');
-  const { data, error } = await requireClient().auth.signUp({ email: email.trim(), password, options: { data: { username } } });
-  if (error) throw error;
+  const bad = passwordProblem(password);
+  if (bad) throw new Error(bad);
+  const { data, error } = await requireClient().auth.signUp({
+    email: email.trim(),
+    password,
+    // FT-07: visibility is opt-in; the server treats anything but literal true as private
+    options: { data: { username, public_profile: consent.publicProfile, show_on_leaderboard: consent.showOnLeaderboard }, emailRedirectTo: `${window.location.origin}/profile` },
+  });
+  // Same answer as a fresh sign-up, so the form never confirms that an email is registered (see SECURITY-AUDIT residual N-6).
+  if (error?.code === 'user_already_exists') return { needsConfirmation: true };
+  if (error) throw authError(error);
   return { needsConfirmation: !data.session };
 }
 
 export async function signIn(email: string, password: string) {
   const { error } = await requireClient().auth.signInWithPassword({ email: email.trim(), password });
-  if (error) throw error;
+  if (error) throw error.status === 429 ? authError(error) : new Error('Incorrect email or password, or the email is not confirmed yet.');
 }
 
 export async function signOut() {
@@ -88,7 +111,29 @@ export async function signOut() {
   if (error) throw error;
 }
 
+/** FT-04: the link lands on /reset-password, which asks for the new password. Same message whether or not the email exists. */
 export async function resetPassword(email: string) {
-  const { error } = await requireClient().auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/profile` });
+  const { error } = await requireClient().auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+  if (error && (error.status === 429 || /rate limit/i.test(error.message))) throw authError(error);
+  // other errors are swallowed on purpose: reporting them would reveal which emails have accounts
+}
+
+/** Sets a new password for the current (recovery) session, then signs out every other session. */
+export async function updatePassword(password: string) {
+  const bad = passwordProblem(password);
+  if (bad) throw new Error(bad);
+  const c = requireClient();
+  const { error } = await c.auth.updateUser({ password });
+  if (error) throw authError(error);
+  await c.auth.signOut({ scope: 'others' });
+}
+
+/** FT-10: re-authenticate with the password, then delete the account server-side (cascades every user row). */
+export async function deleteAccount(email: string, password: string, confirmUsername: string) {
+  const c = requireClient();
+  const { error: authErr } = await c.auth.signInWithPassword({ email, password });
+  if (authErr) throw new Error('Password is incorrect.');
+  const { error } = await c.rpc('delete_my_account', { p_confirm: confirmUsername });
   if (error) throw error;
+  await c.auth.signOut({ scope: 'local' }); // the server user (and its refresh tokens) no longer exist
 }
