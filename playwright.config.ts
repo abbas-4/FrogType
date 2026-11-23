@@ -8,6 +8,8 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+    // Offline suite: real env vars beat .env.local, so a developer's Supabase project never leaks into this build.
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

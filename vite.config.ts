@@ -54,6 +54,8 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./tests/setup.ts'],
       include: ['tests/**/*.test.{ts,tsx}'],
+      // Unit tests run offline even when a developer's .env.local points at a real project.
+      env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
     },
   };
 });
