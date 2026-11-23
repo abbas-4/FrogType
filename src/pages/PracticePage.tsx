@@ -91,7 +91,6 @@ export default function PracticePage() {
           <h2 className="flex items-center gap-2 text-lg font-medium text-text">
             <CalendarDays size={18} className="text-brand" /> Daily challenge
           </h2>
-          <p className="mt-1 text-sm text-sub">The same passage for everyone today ({today} UTC). Beat the target for {100} XP.</p>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
             <div>
               <dt className="text-sub">target</dt>

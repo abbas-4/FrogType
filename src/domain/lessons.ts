@@ -13,20 +13,19 @@ export interface Lesson {
 export interface LessonCategory {
   id: string;
   title: string;
-  description: string;
 }
 
 export const categories: LessonCategory[] = [
-  { id: 'beginner', title: 'Beginner fundamentals', description: 'Posture, rhythm and your first keys.' },
-  { id: 'home', title: 'Home row', description: 'A S D F — J K L ; is where every finger rests.' },
-  { id: 'top', title: 'Top row', description: 'Q W E R T Y U I O P, reached from home.' },
-  { id: 'bottom', title: 'Bottom row', description: 'Z X C V B N M and punctuation below.' },
-  { id: 'fingers', title: 'Finger placement', description: 'Drills that isolate each finger.' },
-  { id: 'combos', title: 'Common combinations', description: 'Frequent bigrams and trigrams.' },
-  { id: 'difficult', title: 'Difficult words', description: 'Long and awkward spellings.' },
-  { id: 'accuracy', title: 'Accuracy training', description: 'Slow down. Every key counts.' },
-  { id: 'speed', title: 'Speed training', description: 'Short common words, high tempo.' },
-  { id: 'advanced', title: 'Advanced practice', description: 'Punctuation, numbers and capitals.' },
+  { id: 'beginner', title: 'Beginner fundamentals' },
+  { id: 'home', title: 'Home row' },
+  { id: 'top', title: 'Top row' },
+  { id: 'bottom', title: 'Bottom row' },
+  { id: 'fingers', title: 'Finger placement' },
+  { id: 'combos', title: 'Common combinations' },
+  { id: 'difficult', title: 'Difficult words' },
+  { id: 'accuracy', title: 'Accuracy training' },
+  { id: 'speed', title: 'Speed training' },
+  { id: 'advanced', title: 'Advanced practice' },
 ];
 
 const L = (
