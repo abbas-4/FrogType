@@ -36,11 +36,11 @@ test('sign-up has no privacy boxes, starts public and on leaderboards, and needs
   await expect(form.getByText('✓ Username is available')).toBeVisible();
   const pw = form.getByLabel('Password', { exact: true });
   const confirm = form.getByLabel('Confirm password', { exact: true });
-  await expect(form.getByText(/at least 10 characters/i)).toBeVisible();
-  await pw.fill('weakpass');
-  await confirm.fill('weakpass');
+  await expect(form.getByText(/at least 8 characters/i)).toBeVisible();
+  await pw.fill('weakpas');
+  await confirm.fill('weakpas');
   await form.getByRole('button', { name: 'Create account' }).click();
-  await expect(form.getByText('Password must be at least 10 characters.')).toBeVisible(); // blocked before any request
+  await expect(form.getByText('Password must be at least 8 characters.')).toBeVisible(); // blocked before any request
   await pw.fill('alllowercase123');
   await confirm.fill('alllowercase123');
   await expect(form.getByText(/needs an uppercase letter/)).toBeVisible();

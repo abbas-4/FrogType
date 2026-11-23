@@ -1,5 +1,6 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { MIN_PASSWORD_LENGTH } from '../services/social';
 
 export const inputClass =
   'mt-1 w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-text placeholder:text-sub/70 focus:border-brand/60 focus:outline-none aria-[invalid=true]:border-error/60 disabled:opacity-60';
@@ -68,7 +69,7 @@ export function PasswordField(props: Omit<FieldProps, 'type' | 'adornment'>) {
 /** Live checklist for the password policy (mirrors passwordProblem and supabase/config.toml). */
 export function PasswordRules({ password, id }: { password: string; id?: string }) {
   const rules = [
-    ['At least 10 characters', password.length >= 10 && password.length <= 72],
+    [`At least ${MIN_PASSWORD_LENGTH} characters`, password.length >= MIN_PASSWORD_LENGTH && password.length <= 72],
     ['An uppercase letter', /[A-Z]/.test(password)],
     ['A lowercase letter', /[a-z]/.test(password)],
     ['A number', /[0-9]/.test(password)],

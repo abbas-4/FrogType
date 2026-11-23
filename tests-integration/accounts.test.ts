@@ -125,6 +125,16 @@ describe('privacy settings', () => {
   });
 });
 
+describe('password policy (server)', () => {
+  it('Supabase Auth accepts 8 characters and rejects 7, matching passwordProblem', async () => {
+    const short = await anon().auth.signUp({ email: freshEmail('pw7'), password: 'Seven1A' }); // gitleaks:allow (synthetic)
+    expect(short.error?.code).toBe('weak_password');
+    const eight = await anon().auth.signUp({ email: freshEmail('pw8'), password: 'Eight1Ab' }); // gitleaks:allow (synthetic)
+    expect(eight.error).toBeNull();
+    created.push(eight.data.user!.id);
+  });
+});
+
 describe('sign-in and confirmation emails', () => {
   it('unconfirmed email: email_not_confirmed only with the right password', async () => {
     const email = freshEmail('unconf');

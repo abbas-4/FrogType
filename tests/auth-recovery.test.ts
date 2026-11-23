@@ -23,7 +23,9 @@ beforeEach(() => {
 
 describe('password policy', () => {
   it('matches the server policy', () => {
-    expect(social.passwordProblem('Short1A')).toMatch(/10 characters/);
+    expect(social.passwordProblem('Short1A')).toMatch(/8 characters/); // 7 characters
+    expect(social.passwordProblem('Eight1Ab')).toBeNull(); // exactly 8 is enough
+    expect(social.passwordProblem('Nine1Abcd')).toBeNull();
     expect(social.passwordProblem('alllowercase1')).toMatch(/uppercase/);
     expect(social.passwordProblem('NoDigitsHereAtAll')).toMatch(/number/);
     expect(social.passwordProblem('x'.repeat(73) + 'A1')).toMatch(/72/);
