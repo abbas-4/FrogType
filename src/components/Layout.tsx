@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Award, BarChart3, BookOpen, Keyboard, Medal, Settings as SettingsIcon, Target, User } from 'lucide-react';
+import { Award, BarChart3, BookOpen, Keyboard, Medal, Menu, Settings as SettingsIcon, Target, User, X } from 'lucide-react';
 import { Logo } from './Logo';
 import { useProgress, useSettings } from '../state/store';
 import { useToasts } from '../state/toasts';
@@ -27,7 +27,33 @@ export function Layout() {
   const sync = useSync();
   const location = useLocation();
   const level = levelFromXp(totalXp(progress.xp));
+  const levelLabel = `Level ${level.level}, ${level.into} of ${level.needed} XP to next level`;
   const [migrating, setMigrating] = useState(false);
+  const [tipsHidden, setTipsHidden] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const menuPanel = useRef<HTMLDivElement>(null);
+
+  // Mobile menu: focus the first item on open; Escape or a click outside closes it.
+  useEffect(() => {
+    if (!menuOpen) return;
+    menuPanel.current?.querySelector('a')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setMenuOpen(false);
+      menuButton.current?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!menuPanel.current?.contains(t) && !menuButton.current?.contains(t)) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -41,37 +67,85 @@ export function Layout() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:rounded focus:bg-brand focus:px-3 focus:py-1 focus:text-bg">
         Skip to content
       </a>
-      <header className="flex flex-wrap items-center justify-between gap-4 py-6">
-        <NavLink to="/" aria-label="FrogType home">
+      <header className="relative flex items-center justify-between gap-4 py-6">
+        <NavLink to="/" aria-label="FrogType home" className="shrink-0 rounded-lg">
           <Logo />
         </NavLink>
-        <nav aria-label="Main" className="order-3 w-full overflow-x-auto sm:order-none sm:w-auto">
-          <ul className="flex gap-1">
+        <nav aria-label="Main" className="hidden md:block" onKeyDown={(e) => e.key === 'Escape' && setTipsHidden(true)} onFocus={() => setTipsHidden(false)}>
+          <ul className="flex items-center gap-1">
             {nav.map(({ to, label, icon: Icon, end }) => (
-              <li key={to}>
+              <li key={to} onMouseEnter={() => setTipsHidden(false)}>
                 <NavLink
                   to={to}
                   end={end}
-                  title={label}
+                  aria-label={label}
                   className={({ isActive }) =>
-                    `flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${isActive ? 'text-brand' : 'text-sub hover:text-text'}`
+                    `group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-brand/10 text-brand' : 'text-sub hover:bg-brand/5 hover:text-brand'}`
                   }
                 >
-                  <Icon size={18} aria-hidden="true" />
-                  <span className="hidden lg:inline">{label}</span>
-                  <span className="sr-only lg:hidden">{label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={20} aria-hidden="true" />
+                      {isActive && <span className="absolute bottom-0.5 h-0.5 w-4 rounded-full bg-brand" aria-hidden="true" />}
+                      {/* Visual tooltip only; the link's accessible name is aria-label. Escape hides it (WCAG 1.4.13). */}
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs font-medium whitespace-nowrap text-zinc-50 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-hover:delay-200 group-focus-visible:opacity-100 ${tipsHidden ? 'hidden' : ''}`}
+                      >
+                        {label}
+                      </span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
           </ul>
         </nav>
-        <NavLink to="/achievements" className="flex items-center gap-2 text-sm text-sub hover:text-text" aria-label={`Level ${level.level}, ${level.into} of ${level.needed} XP to next level`}>
-          <span className="tabular-nums">lv {level.level}</span>
-          <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface" aria-hidden="true">
-            <span className="block h-full bg-brand" style={{ width: `${Math.round(level.progress * 100)}%` }} />
-          </span>
-          {auth.profile && <span className="hidden text-text sm:inline">{auth.profile.username}</span>}
+        <NavLink to="/achievements" className="hidden shrink-0 items-center gap-2 rounded-lg text-sm text-sub hover:text-text md:flex" aria-label={levelLabel}>
+          <LevelMeter level={level.level} progress={level.progress} />
+          {auth.profile && <span className="hidden max-w-32 truncate text-text lg:inline">{auth.profile.username}</span>}
         </NavLink>
+
+        <button
+          ref={menuButton}
+          type="button"
+          aria-label="Menu"
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
+          onClick={() => setMenuOpen((o) => !o)}
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-sub hover:bg-brand/5 hover:text-brand md:hidden"
+        >
+          {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+        </button>
+        <div
+          ref={menuPanel}
+          id="mobile-menu"
+          className={`absolute inset-x-0 top-full z-40 rounded-xl border border-surface-2 bg-surface p-2 shadow-xl transition duration-150 md:hidden ${menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-1 opacity-0'}`}
+        >
+          <NavLink to="/achievements" onClick={() => setMenuOpen(false)} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm text-sub hover:bg-brand/5" aria-label={levelLabel}>
+            <LevelMeter level={level.level} progress={level.progress} />
+            {auth.profile && <span className="truncate text-text">{auth.profile.username}</span>}
+          </NavLink>
+          <nav aria-label="Main menu" className="mt-1 border-t border-surface-2 pt-1">
+            <ul>
+              {nav.map(({ to, label, icon: Icon, end }) => (
+                <li key={to}>
+                  <NavLink
+                    to={to}
+                    end={end}
+                    onClick={() => setMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${isActive ? 'bg-brand/10 text-brand' : 'text-text hover:bg-brand/5 hover:text-brand'}`
+                    }
+                  >
+                    <Icon size={20} aria-hidden="true" />
+                    {label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
       </header>
 
       {sync.migrationOffer !== null && (
@@ -125,5 +199,16 @@ export function Layout() {
         ))}
       </div>
     </div>
+  );
+}
+
+function LevelMeter({ level, progress }: { level: number; progress: number }) {
+  return (
+    <span className="flex items-center gap-2" aria-hidden="true">
+      <span className="tabular-nums">lv {level}</span>
+      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-2">
+        <span className="block h-full bg-brand" style={{ width: `${Math.round(progress * 100)}%` }} />
+      </span>
+    </span>
   );
 }
