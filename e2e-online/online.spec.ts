@@ -62,11 +62,12 @@ test('security headers are sent and the app runs under the CSP with Supabase ena
 
 test('sign-up is private by default and needs email confirmation', async ({ page }) => {
   const email = `ui-${Date.now()}@frogtype.test`;
+  const username = `ui_${Date.now().toString(36)}`;
   const t0 = Date.now();
   await page.goto('/profile');
   await page.getByRole('button', { name: 'Create account' }).first().click();
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Username', { exact: true }).fill(`ui_${Date.now().toString(36)}`);
+  await page.getByLabel('Username', { exact: true }).fill(username);
   const pw = page.getByLabel('Password', { exact: true });
   await expect(page.getByText(/at least 10 characters/i)).toBeVisible();
   await pw.fill('weakpass');
@@ -81,8 +82,9 @@ test('sign-up is private by default and needs email confirmation', async ({ page
   await expect(page.getByText('Check your email to confirm your account')).toBeVisible();
   await page.goto(linkIn(await latestMail(email, /confirm/i, t0 - 1000)));
   await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
-  const { data } = await admin.from('profiles').select('is_public, show_on_leaderboard').eq('username', (await page.getByLabel('Username', { exact: true }).inputValue())).single();
-  expect(data).toEqual({ is_public: false, show_on_leaderboard: false });
+  // the profile form fills asynchronously, so look up the name we typed rather than reading the field
+  await expect.poll(async () => (await admin.from('profiles').select('is_public, show_on_leaderboard').eq('username', username).maybeSingle()).data)
+    .toEqual({ is_public: false, show_on_leaderboard: false });
 });
 
 test('two accounts sharing a browser never see or upload each other\'s results', async ({ page }) => {
