@@ -11,7 +11,8 @@ export function ModeBar({ settings, mode, setMode }: { settings: Settings; mode:
   const current = mode === 'time' ? settings.timeDuration : settings.wordCount;
   const [custom, setCustom] = useState<string | null>(null);
 
-  const btn = (active: boolean) => `flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors ${active ? 'text-brand' : 'text-sub hover:text-text'}`;
+  const btn = (active: boolean) => `flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors ${active ? 'text-brand' : 'text-sub hover:text-text'}`;
+  const group = 'flex items-center gap-0.5 rounded-lg bg-surface px-1.5 py-1';
 
   const applyCustom = () => {
     const n = Math.round(Number(custom));
@@ -21,22 +22,24 @@ export function ModeBar({ settings, mode, setMode }: { settings: Settings; mode:
   };
 
   return (
-    <div className="mx-auto mb-10 flex w-fit flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-xl bg-surface px-4 py-2 text-sm">
-      <button type="button" aria-pressed={settings.punctuation} className={btn(settings.punctuation)} onClick={() => updateSettings({ punctuation: !settings.punctuation })}>
-        <AtSign size={14} aria-hidden="true" /> punctuation
-      </button>
-      <button type="button" aria-pressed={settings.numbers} className={btn(settings.numbers)} onClick={() => updateSettings({ numbers: !settings.numbers })}>
-        <Hash size={14} aria-hidden="true" /> numbers
-      </button>
-      <span className="h-4 w-px bg-surface-2" aria-hidden="true" />
-      <button type="button" aria-pressed={mode === 'time'} className={btn(mode === 'time')} onClick={() => setMode('time')}>
-        <Clock size={14} aria-hidden="true" /> time
-      </button>
-      <button type="button" aria-pressed={mode === 'words'} className={btn(mode === 'words')} onClick={() => setMode('words')}>
-        <Type size={14} aria-hidden="true" /> words
-      </button>
-      <span className="h-4 w-px bg-surface-2" aria-hidden="true" />
-      <div role="radiogroup" aria-label={mode === 'time' ? 'Duration in seconds' : 'Word count'} className="flex items-center gap-1">
+    <div className="mx-auto mb-10 flex max-w-full flex-wrap items-center justify-center gap-2 text-xs">
+      <div className={group}>
+        <button type="button" aria-pressed={settings.punctuation} className={btn(settings.punctuation)} onClick={() => updateSettings({ punctuation: !settings.punctuation })}>
+          <AtSign size={12} aria-hidden="true" /> punctuation
+        </button>
+        <button type="button" aria-pressed={settings.numbers} className={btn(settings.numbers)} onClick={() => updateSettings({ numbers: !settings.numbers })}>
+          <Hash size={12} aria-hidden="true" /> numbers
+        </button>
+      </div>
+      <div className={group}>
+        <button type="button" aria-pressed={mode === 'time'} className={btn(mode === 'time')} onClick={() => setMode('time')}>
+          <Clock size={12} aria-hidden="true" /> time
+        </button>
+        <button type="button" aria-pressed={mode === 'words'} className={btn(mode === 'words')} onClick={() => setMode('words')}>
+          <Type size={12} aria-hidden="true" /> words
+        </button>
+      </div>
+      <div role="radiogroup" aria-label={mode === 'time' ? 'Duration in seconds' : 'Word count'} className={group}>
         {values.map((v) => (
           <button
             key={v}
@@ -71,7 +74,7 @@ export function ModeBar({ settings, mode, setMode }: { settings: Settings; mode:
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
               onBlur={applyCustom}
-              className="w-16 rounded bg-surface-2 px-2 py-0.5 text-text"
+              className="w-14 rounded bg-surface-2 px-1.5 py-0.5 text-text"
             />
           </form>
         )}

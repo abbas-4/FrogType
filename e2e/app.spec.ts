@@ -50,6 +50,19 @@ test('words mode completes, shows results and persists to statistics', async ({ 
   await expect(page.getByText('words 10')).toBeVisible();
 });
 
+test('results icons repeat the same passage and start a new one', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'words' }).click();
+  await page.getByRole('radio', { name: '10', exact: true }).click();
+  const first = await wordsOnScreen(page, 10);
+  await typeText(page, first.join(' '), 40);
+  await page.getByRole('button', { name: 'Repeat test' }).click();
+  expect(await wordsOnScreen(page, 10)).toEqual(first);
+  await typeText(page, first.join(' '), 40);
+  await page.getByRole('button', { name: 'Next test' }).click();
+  expect(await wordsOnScreen(page, 10)).not.toEqual(first);
+});
+
 test('time mode ends automatically when the timer runs out', async ({ page }) => {
   test.setTimeout(45_000);
   await page.goto('/');
