@@ -5,6 +5,11 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 select plan(109);
 
+-- Board and friendship assertions below count whole tables. Other local runs (integration and e2e tests) leave rows
+-- behind, and new accounts are public by default, so start from an empty slate; the rollback at the end restores them.
+delete from public.friendships;
+delete from public.leaderboard_entries;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a1111111-1111-1111-1111-111111111111', 'alice@sec.test', '{"username":"s_alice","public_profile":true,"show_on_leaderboard":true}'),
   ('b2222222-2222-2222-2222-222222222222', 'bob@sec.test', '{"username":"s_bob"}'),

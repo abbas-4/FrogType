@@ -61,7 +61,9 @@ export function AccountMenu() {
     <div
       className="relative"
       onBlur={(e) => {
-        if (open && !e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false); // Tab moved focus out
+        // Tab moved focus out. A null relatedTarget is a click (Safari/macOS Firefox don't focus links on mousedown):
+        // closing then would hide the panel before the click lands; outside clicks close via pointerdown instead.
+        if (open && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
       }}
     >
       <button

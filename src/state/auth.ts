@@ -49,8 +49,12 @@ export function useAuth(): AuthState {
 export async function loadProfile(): Promise<void> {
   const uid = state.user?.id;
   if (!supabase || !uid) return set({ profile: null });
-  const { data } = await supabase.from('profiles').select('id, username, is_public, show_on_leaderboard, created_at, avatar, bio').eq('id', uid).maybeSingle();
-  if (state.user?.id === uid) set({ profile: (data as Profile | null) ?? null }); // ignore a stale response after an account switch
+  const { data, error } = await supabase.from('profiles').select('id, username, is_public, show_on_leaderboard, created_at, avatar, bio').eq('id', uid).maybeSingle();
+  if (state.user?.id !== uid) return; // stale response after an account switch
+  // A failed fetch (network, 5xx) keeps the profile we have; only a successful "no row" clears it.
+  // shortcut: no automatic retry; the next sign-in, save or reload fetches it again.
+  if (error) return;
+  set({ profile: (data as Profile | null) ?? null });
 }
 
 const signedInHandlers = new Set<(u: User) => void>();

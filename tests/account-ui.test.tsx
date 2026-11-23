@@ -21,6 +21,7 @@ const h = vi.hoisted(() => ({
   signOuts: 0,
   /** The signed-in user's stored profiles row (null: none). Updates merge into it; selects return it. */
   row: null as null | Record<string, unknown>,
+  selectError: null as null | { message: string },
 }));
 
 vi.mock('../src/services/supabase', () => {
@@ -42,7 +43,7 @@ vi.mock('../src/services/supabase', () => {
           return { error: h.updateError };
         },
       }),
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: h.row ? { ...h.row } : null }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: async () => (h.selectError ? { data: null, error: h.selectError } : { data: h.row ? { ...h.row } : null, error: null }) }) }),
     }),
     rpc: async () => ({ data: true, error: null }),
   };
@@ -72,6 +73,7 @@ beforeEach(() => {
   h.updateError = null;
   h.signOuts = 0;
   h.row = null;
+  h.selectError = null;
   takeExpectedSignOut(); // no intent left over from an earlier test
   applyIdentity(null, 'SIGNED_OUT');
   authStore.set({ ready: true, user: null, profile: null, sessionEnded: false });
@@ -118,6 +120,17 @@ describe('AccountMenu', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument();
     expect(button).toHaveFocus();
+  });
+
+  it('stays open when a click blurs a menu item without moving focus (Safari), closes when focus leaves', async () => {
+    signInAlice();
+    const user = renderMenu();
+    const button = screen.getByRole('button', { name: 'Account: alice' });
+    await user.click(button);
+    fireEvent.blur(screen.getByRole('link', { name: 'Profile' }), { relatedTarget: null });
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.blur(screen.getByRole('link', { name: 'Profile' }), { relatedTarget: document.body });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('Sign out signs out and the following SIGNED_OUT is not reported as an ended session', async () => {
@@ -287,5 +300,23 @@ describe('Settings → Privacy', () => {
       expect(screen.getByRole('switch', { name })).toBeChecked();
       expect(screen.getByRole('switch', { name })).toBeDisabled();
     }
+  });
+});
+
+describe('loadProfile', () => {
+  it('keeps the loaded profile when a reload fails, and clears it only when the row is really gone', async () => {
+    h.row = { ...profile };
+    applyIdentity(alice, 'SIGNED_IN');
+    await loadProfile();
+    expect(authStore.get().profile).toMatchObject({ username: 'alice' });
+
+    h.selectError = { message: 'network down' };
+    await loadProfile();
+    expect(authStore.get().profile).toMatchObject({ username: 'alice' }); // not wiped by a transient failure
+
+    h.selectError = null;
+    h.row = null;
+    await loadProfile();
+    expect(authStore.get().profile).toBeNull();
   });
 });
