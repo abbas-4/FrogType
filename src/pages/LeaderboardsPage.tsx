@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldAlert, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Button, Card, Notice, PageTitle, Segmented } from '../components/ui';
 import { useAuth } from '../state/auth';
 import { getLeaderboard, listFriends, removeFriend, respondFriendRequest, sendFriendRequest, type Friend, type LeaderboardRow } from '../services/social';
@@ -43,7 +43,7 @@ export default function LeaderboardsPage() {
 
   return (
     <div>
-      <PageTitle sub="Best verified result per user: English, normal difficulty, no punctuation or numbers, standard time and word modes.">Leaderboards</PageTitle>
+      <PageTitle>Leaderboards</PageTitle>
       {!isSupabaseConfigured ? (
         <Notice>
           Leaderboards need online features. This installation has no Supabase project configured, so no rankings are shown (and none are faked). See the README to
@@ -51,11 +51,6 @@ export default function LeaderboardsPage() {
         </Notice>
       ) : (
         <>
-          <p className="mb-4 flex items-start gap-2 text-sm text-sub">
-            <ShieldAlert size={16} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
-            Only results typed on a passage issued by the server and re-scored there from your keystrokes are listed. This blocks forged and replayed scores, but a
-            modified client or a typing bot can still produce a plausible keystroke log, so rankings are <strong className="font-medium text-text">not proof of human typing</strong>.
-          </p>
           <div className="mb-4 flex flex-wrap items-center gap-4">
             <Segmented label="Leaderboard scope" value={scope} onChange={setScope} options={[{ value: 'global', label: 'Global' }, { value: 'friends', label: 'Friends' }]} />
             <Segmented label="Test mode" value={board} onChange={setBoard} options={BOARDS.map((b) => ({ value: b.value, label: b.label }))} />
