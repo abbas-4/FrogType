@@ -11,7 +11,7 @@ vi.mock('../src/services/supabase', () => {
     auth: { signUp: rec('signUp'), signInWithPassword: rec('signInWithPassword'), resetPasswordForEmail: rec('resetPasswordForEmail'), updateUser: rec('updateUser'), signOut: rec('signOut') },
     rpc: rec('rpc'),
   };
-  return { requireClient: () => client, supabase: client, errorMessage: (e: Error) => e.message };
+  return { requireClient: () => client, supabase: client, errorMessage: (e: Error) => e.message, setRememberSession: (v: boolean) => h.calls.push({ fn: 'setRememberSession', args: [v] }), chooseSessionPersistence: () => {} };
 });
 
 const social = await import('../src/services/social');
@@ -46,6 +46,14 @@ describe('no account enumeration in the UI', () => {
     h.next.signInWithPassword = { error: { message: 'Invalid login credentials', status: 400 } };
     await expect(social.signIn('a@b.co', 'x')).rejects.toThrow(/Incorrect email or password/);
   });
+  it('a failed sign-in never changes the saved "keep me signed in" preference; a successful one does', async () => {
+    h.next.signInWithPassword = { error: { message: 'Invalid login credentials', status: 400 } };
+    await expect(social.signIn('a@b.co', 'x', false)).rejects.toThrow();
+    expect(h.calls.some((c) => c.fn === 'setRememberSession')).toBe(false);
+    h.next.signInWithPassword = { data: {}, error: null };
+    await social.signIn('a@b.co', 'Good-Passw0rd', false);
+    expect(h.calls.filter((c) => c.fn === 'setRememberSession')).toEqual([{ fn: 'setRememberSession', args: [false] }]);
+  });
 });
 
 describe('recovery and sign-up requests', () => {
@@ -60,9 +68,9 @@ describe('recovery and sign-up requests', () => {
     expect(h.calls.map((c) => c.fn)).toEqual(['updateUser', 'signOut']);
     expect(h.calls[1]!.args).toEqual([{ scope: 'others' }]);
   });
-  it('sign-up sends privacy consent only as explicit booleans (default private)', async () => {
+  it('sign-up sends only the username; privacy comes from the server defaults (public, on leaderboards)', async () => {
     await social.signUp('a@b.co', 'Good-Passw0rd', 'valid_name');
-    expect((h.calls[0]!.args[0] as { options: { data: unknown } }).options.data).toEqual({ username: 'valid_name', public_profile: false, show_on_leaderboard: false });
+    expect((h.calls[0]!.args[0] as { options: { data: unknown } }).options.data).toEqual({ username: 'valid_name' });
   });
   it('account deletion re-authenticates before calling the server', async () => {
     await social.deleteAccount('a@b.co', 'pw', 'me');

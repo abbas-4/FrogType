@@ -166,7 +166,7 @@ site_url = "http://localhost:5173"
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # Exact URLs only (no wildcards). Production: add only https://<your-domain>/reset-password and https://<your-domain>/profile.
-additional_redirect_urls = ["http://localhost:5173/reset-password", "http://localhost:5173/profile", "http://localhost:4173/reset-password", "http://localhost:4173/profile", "http://localhost:4174/reset-password", "http://localhost:4174/profile"]
+additional_redirect_urls = ["http://localhost:5173/reset-password", "http://localhost:5173/profile", "http://localhost:5173/settings", "http://localhost:4173/reset-password", "http://localhost:4173/profile", "http://localhost:4173/settings", "http://localhost:4174/reset-password", "http://localhost:4174/profile", "http://localhost:4174/settings"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

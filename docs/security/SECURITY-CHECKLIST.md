@@ -6,9 +6,9 @@ Settings that code cannot enforce. Do these before a public launch, and re-check
 
 ### Database
 
-- [ ] Apply migrations in order with `supabase db push`: `20261122000000_init.sql`, then `20261123000000_security_hardening.sql`. Never edit an applied migration; add a new one.
+- [ ] Apply migrations in order with `supabase db push`: `20261122000000_init.sql`, `20261123000000_security_hardening.sql`, then `20261124000000_account_profiles.sql`. Never edit an applied migration; add a new one.
 - [ ] **Take a backup before applying the hardening migration to a populated database.** It is non-destructive. Existing XP, achievements and leaderboard rows are kept, marked unverified, and hidden from public views. Existing profiles keep their visibility. The backfill runs `ft_award` once per profile in one transaction, so check row counts first on a large database.
-- [ ] After applying, run these read-only checks in the SQL editor. Expected results: zero rows, `{get_leaderboard,get_public_profile}`, zero rows.
+- [ ] After applying, run these read-only checks in the SQL editor. Expected results: zero rows, `{get_leaderboard,get_public_profile,username_available}`, zero rows.
   ```sql
   -- every public function pins search_path
   select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -35,7 +35,8 @@ Settings that code cannot enforce. Do these before a public launch, and re-check
 | Secure password change | **On** | Changing a password requires a recent sign-in |
 | Email OTP / link expiry | **900 s** | Recovery links expire after 15 min |
 | Site URL | `https://<your-domain>` | |
-| Redirect URLs | `https://<your-domain>/reset-password` and `https://<your-domain>/profile` only | Exact URLs, no wildcards: prevents open redirects of auth codes |
+| Redirect URLs | `https://<your-domain>/reset-password`, `https://<your-domain>/profile` and `https://<your-domain>/settings` only | Exact URLs, no wildcards: prevents open redirects of auth codes. `/settings` receives email-change links |
+| Secure email change | **On** | Both the old and new address must confirm an email change |
 | Auth rate limits | Emails ≤ 4/hour; sign-ups and sign-ins ≤ 30 per 5 min per IP; token verifications ≤ 30 per 5 min | Brute-force and email-bombing protection. `email_sent = 30` in `config.toml` is for the local test stack only |
 | CAPTCHA (hCaptcha or Turnstile) | **On** for sign-up, sign-in and reset | Slows bots and the upstream sign-up enumeration (audit N-6). Needs a small client change to pass `captchaToken` |
 | Custom SMTP | A real provider with SPF, DKIM and DMARC | The built-in mailer is not for production |
@@ -43,6 +44,7 @@ Settings that code cannot enforce. Do these before a public launch, and re-check
 | MFA (TOTP) | Optional | At least for the project owner's account |
 
 - [ ] Complete a real password reset on the production domain with a test account, then try an expired link after 15 min.
+- [ ] Work through the live verification list in [ACCOUNTS-SETUP.md § 6](../ACCOUNTS-SETUP.md#6-verify-on-the-live-site-with-a-test-inbox-you-control) (sign-up confirmation, resend, email change, password change, privacy, export, deletion).
 
 ### API keys
 

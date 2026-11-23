@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AchievementIcon } from '../components/AchievementIcon';
+import { Avatar } from '../components/Avatar';
 import { Card, Notice, Stat } from '../components/ui';
 import { achievements } from '../domain/achievements';
 import { levelFromXp } from '../domain/progression';
@@ -30,11 +31,10 @@ export function ProfileCard({ p }: { p: PublicProfile }) {
   return (
     <div>
       <div className="mb-6 flex items-center gap-4">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/15 text-2xl font-semibold text-brand" aria-hidden="true">
-          {p.username.slice(0, 2).toUpperCase()}
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold text-text">{p.username}</h1>
+        <Avatar avatar={p.avatar} username={p.username} size="lg" />
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold break-words text-text">{p.username}</h1>
+          {p.bio && <p className="mt-1 text-sm break-words text-text/90">{p.bio}</p>}
           <p className="text-sm text-sub">Level {lvl.level} · joined {new Date(p.created_at).toLocaleDateString()}</p>
         </div>
       </div>

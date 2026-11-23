@@ -164,7 +164,9 @@ export async function acceptMigration(): Promise<void> {
     set({ status: 'idle' });
     await syncNow();
   } catch (e) {
-    set({ status: 'error', message: `Upload failed: ${errorMessage(e)}. Nothing was removed locally; you can retry from your profile.` });
+    if (authStore.get().user?.id !== user.id) return; // signed out or switched mid-upload: the guest copy is untouched
+    set({ status: 'error', message: `Upload failed: ${errorMessage(e)}. Nothing was removed from this browser; you can try again.` });
+    refreshOffer(user.id); // the import is idempotent by test id, so retrying never duplicates
   }
 }
 

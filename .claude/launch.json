@@ -1,6 +1,27 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "frogtype-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--port", "5173", "--strictPort"], "port": 5173 }
+    {
+      "name": "frogtype-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "frogtype-dev-supabase",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "eval \"$(npx supabase status -o env | grep -E '^(API_URL|ANON_KEY)=')\" && VITE_SUPABASE_URL=$API_URL VITE_SUPABASE_ANON_KEY=$ANON_KEY exec npx vite --port 5175 --strictPort"
+      ],
+      "port": 5175
+    }
   ]
 }

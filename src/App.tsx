@@ -16,6 +16,7 @@ const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
 
 export function App() {
   return (
@@ -35,6 +36,8 @@ export function App() {
             <Route path="u/:username" element={<PublicProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
+            <Route path="signin" element={<AuthPage mode="signin" />} />
+            <Route path="signup" element={<AuthPage mode="signup" />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

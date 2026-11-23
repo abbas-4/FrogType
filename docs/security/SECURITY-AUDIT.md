@@ -134,6 +134,7 @@ Severity reflects impact if the cloud features are deployed. Status vocabulary: 
   - Leaderboards require `show_on_leaderboard`.
 - **Evidence:** pgTAP (defaults, consent parsing, anon/other-user/owner visibility, opt-out removes from global board, friends board needs accepted friendship plus opt-in); integration; e2e sign-up check.
 - **Note:** existing accounts keep their current settings (changing them silently would override a choice). Consider a one-time notice.
+- **Update (`20261125000000_public_by_default.sql`, product decision):** the default visibility was deliberately reversed. Sign-up no longer shows the opt-in boxes; new accounts start with a public profile and a leaderboard listing, and each user can turn either off in Settings → Privacy. Existing accounts are untouched. Everything else above still holds: owner-only table access, column-level update grants, and live enforcement in `get_public_profile` / `get_leaderboard`. Evidence: `supabase/tests/privacy_defaults.test.sql`.
 
 ### FT-08 — Unprotected main, no CI or security workflows (Medium) — Fixed but not fully verified
 

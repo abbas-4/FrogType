@@ -39,15 +39,23 @@ describe('1. anonymous attacker', () => {
 
 describe('3/5. score integrity (real engine -> server replay)', () => {
   it('server-recomputed metrics match the client engine exactly for an honest run with typos', async () => {
-    const u = await newUser({ show_on_leaderboard: true });
+    const u = await newUser(); // new accounts are on leaderboards by default
     const { ch, r } = await rankedRun(u, { typos: true });
     const { data, error } = await u.c.rpc('submit_test', { payload: payloadFor(r, ch.id) });
     expect(error).toBeNull();
     expect(data).toMatchObject({ accepted: true, verified: true, ranked: true, flags: [] });
     expect(Math.abs(Number(data.wpm) - r.wpm)).toBeLessThanOrEqual(0.05);
     expect(Math.abs(Number(data.accuracy) - r.accuracy)).toBeLessThanOrEqual(0.01);
-    const { data: board } = await anon().rpc('get_leaderboard', { p_scope: 'global', p_mode: 'words', p_mode2: 10, p_limit: 100 });
-    expect(board.some((row: { username: string }) => row.username === u.username)).toBe(true);
+    const onBoard = async () => {
+      const { data: board } = await anon().rpc('get_leaderboard', { p_scope: 'global', p_mode: 'words', p_mode2: 10, p_limit: 100 });
+      return board.some((row: { username: string }) => row.username === u.username);
+    };
+    expect(await onBoard()).toBe(true);
+    // the owner's opt-out removes them from the public board on the very next request, and opting back in restores them
+    expect((await u.c.from('profiles').update({ show_on_leaderboard: false }).eq('id', u.id)).error).toBeNull();
+    expect(await onBoard()).toBe(false);
+    expect((await u.c.from('profiles').update({ show_on_leaderboard: true }).eq('id', u.id)).error).toBeNull();
+    expect(await onBoard()).toBe(true);
   });
 
   it('rejects inflated metrics, replays and another user\'s challenge', async () => {
@@ -142,7 +150,8 @@ describe('10/13. friends and privacy', () => {
     const reqId = incoming[0].id;
     expect((await eve.c.rpc('respond_friend_request', { p_id: reqId, p_accept: true })).error?.message).toMatch(/not found/);
     expect((await a.c.rpc('respond_friend_request', { p_id: reqId, p_accept: true })).error?.message).toMatch(/not found/);
-    expect((await anon().rpc('get_public_profile', { p_username: a.username })).data).toBeNull(); // private by default
+    expect((await a.c.from('profiles').update({ is_public: false }).eq('id', a.id)).error).toBeNull(); // a chose a private profile
+    expect((await anon().rpc('get_public_profile', { p_username: a.username })).data).toBeNull();
     expect((await eve.c.rpc('get_public_profile', { p_username: a.username })).data).toBeNull();
     expect((await a.c.rpc('get_public_profile', { p_username: a.username })).data).not.toBeNull();
   });

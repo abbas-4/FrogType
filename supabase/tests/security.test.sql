@@ -8,7 +8,7 @@ select plan(109);
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a1111111-1111-1111-1111-111111111111', 'alice@sec.test', '{"username":"s_alice","public_profile":true,"show_on_leaderboard":true}'),
   ('b2222222-2222-2222-2222-222222222222', 'bob@sec.test', '{"username":"s_bob"}'),
-  ('c3333333-3333-3333-3333-333333333333', 'carol@sec.test', '{"username":"s_carol","public_profile":"yes"}'),
+  ('c3333333-3333-3333-3333-333333333333', 'carol@sec.test', '{"username":"s_carol","public_profile":false,"show_on_leaderboard":false}'),
   ('d4444444-4444-4444-4444-444444444444', 'dave@sec.test', '{"username":"S_ALICE"}');
 
 create schema sectest;
@@ -76,11 +76,11 @@ select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.
            where n.nspname = 'public' and p.prosecdef and p.proowner <> 'postgres'::regrole), 0, 'security definer functions are owned by postgres');
 select is(array(select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                 where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1),
-  array['get_leaderboard', 'get_public_profile'], 'anon can execute only the two public read RPCs');
+  array['get_leaderboard', 'get_public_profile', 'username_available'], 'anon can execute only the public read RPCs and the rate-limited username check');
 select is(array(select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                 where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute') order by 1),
   array['delete_my_account', 'get_leaderboard', 'get_public_profile', 'import_tests', 'issue_challenge', 'list_friends', 'merge_progress',
-        'respond_friend_request', 'send_friend_request', 'submit_test', 'sync_progress'],
+        'respond_friend_request', 'send_friend_request', 'submit_test', 'sync_progress', 'username_available'],
   'authenticated can execute only the intended API (helpers like ft_award/ft_replay/ft_rate_limit are private)');
 select is((select count(*)::int from information_schema.role_table_grants
            where table_schema = 'public' and grantee in ('anon', 'authenticated') and privilege_type in ('INSERT', 'UPDATE', 'TRUNCATE', 'REFERENCES', 'TRIGGER')), 0,
@@ -93,8 +93,11 @@ select is(has_schema_privilege('authenticated', 'public', 'CREATE') or has_schem
 -- ================================================================ FT-07: privacy defaults and sign-up consent
 select results_eq($$ select username, is_public, show_on_leaderboard from profiles where id in
   ('a1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222', 'c3333333-3333-3333-3333-333333333333') order by username $$,
-  $$ values ('s_alice'::text, true, true), ('s_bob', false, false), ('s_carol', false, false) $$,
-  'new accounts are private unless the user explicitly opted in (non-boolean "yes" is not consent)');
+  $$ values ('s_alice'::text, true, true), ('s_bob', true, true), ('s_carol', true, true) $$,
+  'new accounts start public and on leaderboards; sign-up metadata cannot change that (20261125000000)');
+-- bob and carol then choose private in Settings, as an existing user would have; the tests below rely on it.
+update profiles set is_public = false, show_on_leaderboard = false
+  where id in ('b2222222-2222-2222-2222-222222222222', 'c3333333-3333-3333-3333-333333333333');
 select matches((select username from profiles where id = 'd4444444-4444-4444-4444-444444444444'), '^frog_[0-9a-f]{8}$',
   'a taken username falls back to a generated one instead of failing sign-up');
 

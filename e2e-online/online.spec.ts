@@ -1,45 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { admin, latestMail, linkIn, newUser, PASSWORD, psql } from '../tests-integration/env';
-
-async function signInUI(page: Page, email: string, password = PASSWORD) {
-  await page.goto('/profile');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.locator('form button[type=submit]').click();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
-}
-
-async function signOutUI(page: Page) {
-  await page.goto('/profile');
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible();
-}
-
-/** Types the visible words like a person (irregular gaps), so the server's automation heuristics stay quiet. */
-async function typeWords(page: Page, n: number) {
-  await page.getByTestId('words').locator('.word').first().waitFor();
-  const words = (await page.getByTestId('words').locator('.word').allTextContents()).slice(0, n);
-  await page.getByTestId('typing-input').focus();
-  let i = 0;
-  for (const ch of words.join(' ')) {
-    await page.keyboard.type(ch);
-    await page.waitForTimeout(55 + ((i++ * 7919) % 97));
-  }
-  return words;
-}
-
-async function wordsTest(page: Page, waitForChallenge: boolean) {
-  await page.goto('/');
-  const challenge = waitForChallenge ? page.waitForResponse((r) => r.url().includes('/rpc/issue_challenge') && r.ok()) : null;
-  await page.getByRole('button', { name: 'words' }).click();
-  await page.getByRole('radio', { name: '10', exact: true }).click();
-  if (challenge) await challenge;
-  await page.waitForTimeout(300);
-  await typeWords(page, 10);
-  await expect(page.getByTestId('results')).toBeVisible();
-}
-
-const cloudTests = async (userId: string) => (await admin.from('typing_tests').select('id, verified, ranked').eq('user_id', userId)).data ?? [];
+import { accountButton, cloudTests, signInUI, signOutUI, wordsTest } from './helpers';
 
 test('security headers are sent and the app runs under the CSP with Supabase enabled', async ({ page }) => {
   const violations: string[] = [];
@@ -53,38 +14,56 @@ test('security headers are sent and the app runs under the CSP with Supabase ena
   expect(h['x-frame-options']).toBe('DENY');
   expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
   expect(h['permissions-policy']).toContain('camera=()');
-  for (const path of ['/stats', '/leaderboards', '/profile', '/settings', '/lessons', '/practice']) {
+  for (const path of ['/stats', '/leaderboards', '/profile', '/settings', '/lessons', '/practice', '/signin', '/signup', '/reset-password']) {
     await page.goto(path);
     await page.waitForLoadState('networkidle');
   }
   expect(violations).toEqual([]);
 });
 
-test('sign-up is private by default and needs email confirmation', async ({ page }) => {
+test('sign-up has no privacy boxes, starts public and on leaderboards, and needs email confirmation', async ({ page }) => {
   const email = `ui-${Date.now()}@frogtype.test`;
   const username = `ui_${Date.now().toString(36)}`;
   const t0 = Date.now();
-  await page.goto('/profile');
-  await page.getByRole('button', { name: 'Create account' }).first().click();
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Username', { exact: true }).fill(username);
-  const pw = page.getByLabel('Password', { exact: true });
-  await expect(page.getByText(/at least 10 characters/i)).toBeVisible();
+  await page.goto('/signup');
+  const form = page.getByRole('form', { name: 'Create account' });
+  await form.getByLabel('Email').fill('not-an-email');
+  await form.getByLabel('Username', { exact: true }).fill('ab');
+  await expect(form.getByText('Enter a valid email address.')).toBeVisible(); // email checked on blur
+  await expect(form.getByText('Username must be at least 3 characters.')).toBeVisible(); // username checked as you type
+  await form.getByLabel('Email').fill(email);
+  await form.getByLabel('Username', { exact: true }).fill(username);
+  await expect(form.getByText('✓ Username is available')).toBeVisible();
+  const pw = form.getByLabel('Password', { exact: true });
+  const confirm = form.getByLabel('Confirm password', { exact: true });
+  await expect(form.getByText(/at least 10 characters/i)).toBeVisible();
   await pw.fill('weakpass');
-  expect(await pw.evaluate((e) => (e as HTMLInputElement).validity.tooShort)).toBe(true); // browser blocks submit
+  await confirm.fill('weakpass');
+  await form.getByRole('button', { name: 'Create account' }).click();
+  await expect(form.getByText('Password must be at least 10 characters.')).toBeVisible(); // blocked before any request
   await pw.fill('alllowercase123');
-  await page.locator('form button[type=submit]').click();
-  await expect(page.getByText(/needs an uppercase letter/)).toBeVisible();
-  await page.getByLabel('Password', { exact: true }).fill('Ui-Signup-Passw0rd');
-  await expect(page.getByRole('checkbox', { name: /profile public/ })).not.toBeChecked();
-  await expect(page.getByRole('checkbox', { name: /leaderboards/ })).not.toBeChecked();
-  await page.locator('form button[type=submit]').click();
-  await expect(page.getByText('Check your email to confirm your account')).toBeVisible();
+  await confirm.fill('alllowercase123');
+  await expect(form.getByText(/needs an uppercase letter/)).toBeVisible();
+  await pw.fill('Ui-Signup-Passw0rd');
+  await confirm.fill('Ui-Signup-Passw0rX');
+  await expect(form.getByText('The passwords do not match.')).toBeVisible(); // confirm checked once it is as long
+  await confirm.fill('Ui-Signup-Passw0rd');
+  await expect(form.getByText('The passwords do not match.')).toHaveCount(0);
+  expect((await admin.from('profiles').select('id').eq('username', username).maybeSingle()).data).toBeNull(); // nothing was sent yet
+  await expect(form.getByRole('checkbox')).toHaveCount(0); // privacy lives in Settings → Privacy
+  await form.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByTestId('signup-sent')).toContainText('Check your email to confirm your account');
+  await expect(page.getByTestId('signup-sent')).toContainText(email);
   await page.goto(linkIn(await latestMail(email, /confirm/i, t0 - 1000)));
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  await expect(page).toHaveURL(/\/profile/);
+  await expect(page.getByText("Your email address is confirmed and you're signed in.")).toBeVisible();
+  await expect(page.locator('#account-menu')).toContainText(email);
   // the profile form fills asynchronously, so look up the name we typed rather than reading the field
   await expect.poll(async () => (await admin.from('profiles').select('is_public, show_on_leaderboard').eq('username', username).maybeSingle()).data)
-    .toEqual({ is_public: false, show_on_leaderboard: false });
+    .toEqual({ is_public: true, show_on_leaderboard: true });
+  await page.goto('/settings');
+  await expect(page.getByRole('switch', { name: /^Public profile/ })).toBeChecked();
+  await expect(page.getByRole('switch', { name: /^Show me on leaderboards/ })).toBeChecked();
 });
 
 test('two accounts sharing a browser never see or upload each other\'s results', async ({ page }) => {
@@ -136,10 +115,12 @@ test('password recovery: valid link once; reused, tampered and expired links fai
   const u = await newUser();
   const request = async () => {
     const t0 = Date.now();
-    await page.goto('/profile');
-    await page.getByRole('button', { name: 'Forgot password?' }).click();
-    await page.getByLabel('Email').fill(u.email);
-    await page.locator('form button[type=submit]').click();
+    await page.goto('/signin');
+    await page.getByRole('link', { name: 'Forgot password?' }).click();
+    await expect(page).toHaveURL(/\/reset-password$/);
+    const form = page.getByRole('form', { name: 'Reset password' });
+    await form.getByLabel('Email').fill(u.email);
+    await form.getByRole('button', { name: 'Send reset link' }).click();
     await expect(page.getByText('If that email has an account, a reset link is on its way.')).toBeVisible();
     return linkIn(await latestMail(u.email, /reset/i, t0 - 1000));
   };
@@ -147,10 +128,10 @@ test('password recovery: valid link once; reused, tampered and expired links fai
   await page.goto(link);
   await expect(page).toHaveURL(/\/reset-password/);
   await page.getByLabel('New password', { exact: true }).fill('Recovered-Passw0rd');
-  await page.getByLabel('Confirm new password').fill('Different-Passw0rd');
+  await page.getByLabel('Confirm new password', { exact: true }).fill('Different-Passw0rd');
   await page.getByRole('button', { name: 'Set new password' }).click();
   await expect(page.getByText('The passwords do not match.')).toBeVisible();
-  await page.getByLabel('Confirm new password').fill('Recovered-Passw0rd');
+  await page.getByLabel('Confirm new password', { exact: true }).fill('Recovered-Passw0rd');
   await page.getByRole('button', { name: 'Set new password' }).click();
   await expect(page.getByTestId('reset-done')).toBeVisible();
   await signOutUI(page);
@@ -175,7 +156,7 @@ test('export downloads only the user\'s data; deletion re-authenticates and remo
   await signInUI(page, u.email);
   await wordsTest(page, false);
   await expect.poll(async () => (await cloudTests(u.id)).length).toBe(1);
-  await page.goto('/profile');
+  await page.goto('/settings');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download my data (JSON)' }).click();
   const file = JSON.parse(await (await (await download).createReadStream()).toArray().then((c) => Buffer.concat(c).toString()));
@@ -187,13 +168,14 @@ test('export downloads only the user\'s data; deletion re-authenticates and remo
   const form = page.getByRole('form', { name: 'Delete account' });
   await expect(form.getByRole('button', { name: 'Permanently delete' })).toBeDisabled();
   await form.getByLabel(/Type your username/).fill(u.username);
-  await form.getByLabel('Password').fill('wrong-password');
+  await form.getByLabel('Password', { exact: true }).fill('wrong-password');
   await form.getByRole('button', { name: 'Permanently delete' }).click();
   await expect(page.getByText('Password is incorrect.')).toBeVisible();
   expect((await admin.auth.admin.getUserById(u.id)).error).toBeNull();
-  await form.getByLabel('Password').fill(PASSWORD);
+  await form.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await form.getByRole('button', { name: 'Permanently delete' }).click();
-  await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible();
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(accountButton(page)).toHaveCount(0);
   expect((await admin.auth.admin.getUserById(u.id)).error).not.toBeNull();
   expect(await cloudTests(u.id)).toEqual([]);
   expect(await page.evaluate((id) => localStorage.getItem(`frogtype:progress:u:${id}`), u.id)).toBeNull();

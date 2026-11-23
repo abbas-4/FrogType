@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthForm } from '../components/AuthForm';
+import { ResetRequestForm } from '../components/AuthForm';
+import { PasswordField, PasswordRules } from '../components/forms';
 import { Button, Card, Notice, PageTitle } from '../components/ui';
 import { authStore, useAuth } from '../state/auth';
 import { passwordProblem, updatePassword } from '../services/social';
@@ -40,7 +41,6 @@ export default function ResetPasswordPage() {
     }
   };
 
-  const input = 'mt-1 w-full rounded-lg bg-surface-2 px-3 py-2 text-text';
   let body: React.ReactNode;
   if (!isSupabaseConfigured) body = <Notice>Accounts are not configured on this installation.</Notice>;
   else if (done)
@@ -52,16 +52,12 @@ export default function ResetPasswordPage() {
     );
   else if (auth.recovery)
     body = (
-      <form onSubmit={submit} className="max-w-sm space-y-3" aria-label="Choose a new password">
-        <label className="block text-sm text-sub">
-          New password
-          <input className={input} type="password" required minLength={10} maxLength={72} autoComplete="new-password" aria-describedby="pw-rules" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        <p id="pw-rules" className="-mt-2 text-xs text-sub">At least 10 characters with an uppercase letter, a lowercase letter and a number.</p>
-        <label className="block text-sm text-sub">
-          Confirm new password
-          <input className={input} type="password" required maxLength={72} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        </label>
+      <form onSubmit={submit} noValidate className="max-w-sm space-y-3" aria-label="Choose a new password">
+        <div>
+          <PasswordField label="New password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} aria-describedby="pw-rules" />
+          <PasswordRules id="pw-rules" password={password} />
+        </div>
+        <PasswordField label="Confirm new password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Set new password'}</Button>
         {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
       </form>
@@ -70,7 +66,7 @@ export default function ResetPasswordPage() {
     body = (
       <div className="space-y-4" data-testid="reset-invalid">
         <Notice tone="warn">This reset link is invalid, has already been used, or has expired. Request a new one below (links work once, for 15 minutes, in the browser that requested them).</Notice>
-        <AuthForm initialMode="reset" />
+        <ResetRequestForm />
       </div>
     );
   else if (landingAuth.hadCode) body = <p className="text-sub">Checking your link…</p>;
@@ -78,7 +74,7 @@ export default function ResetPasswordPage() {
     body = (
       <div className="space-y-4">
         <p className="text-sm text-sub">Open the reset link from your email to choose a new password, or request a new link.</p>
-        <AuthForm initialMode="reset" />
+        <ResetRequestForm />
       </div>
     );
 
