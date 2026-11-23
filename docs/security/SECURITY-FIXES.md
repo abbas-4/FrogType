@@ -66,4 +66,11 @@ Every suite was re-run after these fixes ([results](SECURITY-TEST-RESULTS.md#fin
 ## GitHub delivery
 
 - Branch `security/frogtype-complete-hardening`, one pull request to `main`, **not merged**: the owner reviews and approves.
-- Branch protection, rulesets and security features were changed only as described in the pull request, which lists exactly what was applied and what is left to do by hand.
+- Pull request: https://github.com/abbas-4/FrogType/pull/1
+- Applied to `main` with the owner's authorization (2026-11-23, confirmed via the GitHub API):
+  - Required status checks, with the branch up to date: `Lint, types, unit, build, audit, e2e`, `Database, integration and online e2e (local Supabase)`, `Secret scan (gitleaks, full history)`, `Analyze (javascript-typescript)`, `review`.
+  - A pull request is required, with 0 approvals (solo maintainer) and stale reviews dismissed.
+  - Force pushes and deletion are blocked; conversation resolution is required.
+  - Admin enforcement is off, so the owner can still override in an emergency. Turn it on once CI is proven stable.
+- Also enabled: Dependabot alerts, Dependabot security updates, private vulnerability reporting. Secret scanning and push protection were already on.
+- Still manual: Actions workflow permissions "read" (Settings → Actions → General) and, when collaborators join, 1 required approval ([checklist §3](SECURITY-CHECKLIST.md#3-github-repository)).

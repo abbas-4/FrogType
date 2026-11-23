@@ -149,7 +149,8 @@ Fixed before commit:
 
 ## GitHub repository settings
 
-At audit time `main` was unprotected with no rulesets. Secret scanning and push protection were on; Dependabot security updates were off. Changes made with the owner's authorization, and their outcome, are in the pull-request description and in [SECURITY-FIXES.md](SECURITY-FIXES.md#github-delivery).
+Before: `main` unprotected, no rulesets; secret scanning and push protection on; Dependabot security updates off.
+After (applied via the GitHub API and read back): `main` protected with five required checks (strict), a required PR, no force pushes or deletion, and conversation resolution; Dependabot alerts, security updates and private vulnerability reporting on. Details in [SECURITY-FIXES.md](SECURITY-FIXES.md#github-delivery).
 
 ## Known limitations and blockers
 
