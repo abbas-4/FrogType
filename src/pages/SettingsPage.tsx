@@ -60,7 +60,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageTitle sub="Appearance and test settings are saved automatically in this browser.">Settings</PageTitle>
+      <PageTitle>Settings</PageTitle>
 
       <nav aria-label="Settings sections" className="-mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-sub">
         {[['account', 'Account'], ['privacy', 'Privacy'], ['data', 'Data'], ['appearance', 'Appearance'], ['test', 'Test']].map(([id, label]) => (

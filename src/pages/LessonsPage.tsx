@@ -66,7 +66,6 @@ export default function LessonsPage() {
               <span className="mr-2 text-sub tabular-nums">{i + 1}.</span>
               {cat.title}
             </h2>
-            <p className="text-sm text-sub">{cat.description}</p>
             <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {lessons
                 .filter((l) => l.category === cat.id)
@@ -79,7 +78,6 @@ export default function LessonsPage() {
                           <span className="font-medium text-text">{l.title}</span>
                           {p?.completed ? <CheckCircle2 size={18} className="text-brand" aria-label="Passed" /> : <Circle size={18} className="text-sub" aria-label="Not passed" />}
                         </span>
-                        <span className="mt-1 text-sm text-sub">{l.description}</span>
                         <span className="mt-auto pt-3 text-xs text-sub">
                           target {l.targetWpm} wpm · {l.targetAccuracy}%
                           {p && ` · best ${Math.round(p.bestWpm)} wpm${p.attempts > 1 && p.bestWpm > p.firstWpm ? ` (+${Math.round(p.bestWpm - p.firstWpm)})` : ''}`}
