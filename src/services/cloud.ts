@@ -1,5 +1,6 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Progress, TestResult } from '../types';
-import { isTestResult } from '../persistence/storage';
+import { sanitizeTest } from '../persistence/storage';
 import { requireClient } from './supabase';
 
 /** Fields sent to the server. The server re-validates every one (see supabase/migrations). */
@@ -25,10 +26,12 @@ export function toPayload(t: TestResult) {
     bigram_errors: t.bigramErrors,
     lesson_id: t.lessonId ?? null,
     daily_date: t.dailyDate ?? null,
+    // ranked attempts: the server replays this keylog against its own passage and recomputes every metric
+    ...(t.challengeId && t.keylog ? { challenge_id: t.challengeId, keylog: t.keylog } : {}),
   };
 }
 
-type Row = ReturnType<typeof toPayload> & { valid?: boolean; ranked?: boolean };
+type Row = Omit<ReturnType<typeof toPayload>, 'keylog' | 'challenge_id'> & { verified?: boolean };
 
 export function fromRow(r: Row): TestResult | null {
   const t: TestResult = {
@@ -53,23 +56,46 @@ export function fromRow(r: Row): TestResult | null {
     valid: true,
     lessonId: r.lesson_id ?? undefined,
     dailyDate: r.daily_date ?? undefined,
+    verified: Boolean(r.verified),
   };
-  return isTestResult(t) ? t : null;
+  return sanitizeTest(t);
 }
 
-/** Submits one live test through the validating, rate-limited RPC. Returns whether it was accepted for ranking. */
-export async function submitTest(t: TestResult): Promise<{ ranked: boolean }> {
-  const { data, error } = await requireClient().rpc('submit_test', { payload: toPayload(t) });
+export interface SubmitOutcome {
+  accepted: boolean;
+  duplicate: boolean;
+  ranked: boolean;
+  verified: boolean;
+  flags: string[];
+}
+
+/** Submits one live test through the validating, rate-limited RPC. */
+export async function submitTest(t: TestResult, client: SupabaseClient = requireClient()): Promise<SubmitOutcome> {
+  const { data, error } = await client.rpc('submit_test', { payload: toPayload(t) });
   if (error) throw error;
-  return { ranked: Boolean((data as { ranked?: boolean } | null)?.ranked) };
+  const d = (data ?? {}) as Partial<SubmitOutcome>;
+  return { accepted: Boolean(d.accepted), duplicate: Boolean(d.duplicate), ranked: Boolean(d.ranked), verified: Boolean(d.verified), flags: d.flags ?? [] };
+}
+
+export interface Challenge {
+  id: string;
+  words: string[];
+  expiresAt: string;
+}
+
+/** FT-01: asks the server for a single-use passage. Only standard English boards can be ranked. */
+export async function issueChallenge(mode: 'time' | 'words', mode2: number): Promise<Challenge> {
+  const { data, error } = await requireClient().rpc('issue_challenge', { p_mode: mode, p_mode2: mode2 });
+  if (error) throw error;
+  const d = data as { id: string; words: string[]; expires_at: string };
+  return { id: d.id, words: d.words, expiresAt: d.expires_at };
 }
 
 /** Bulk import of pre-account local history. Imported tests are stored but never ranked. Idempotent by id. */
-export async function importTests(tests: TestResult[]): Promise<number> {
-  const client = requireClient();
+export async function importTests(tests: TestResult[], client: SupabaseClient = requireClient()): Promise<number> {
   let imported = 0;
   for (let i = 0; i < tests.length; i += 200) {
-    const chunk = tests.slice(i, i + 200).map(toPayload);
+    const chunk = tests.slice(i, i + 200).map((t) => toPayload({ ...t, challengeId: undefined, keylog: undefined }));
     const { data, error } = await client.rpc('import_tests', { payloads: chunk });
     if (error) throw error;
     imported += Number(data ?? 0);
@@ -77,13 +103,9 @@ export async function importTests(tests: TestResult[]): Promise<number> {
   return imported;
 }
 
-/** Merges XP, achievements, lesson and daily progress server-side. The server keeps the max/union — never overwrites. */
-export async function pushProgress(p: Progress): Promise<void> {
-  const { error } = await requireClient().rpc('merge_progress', {
-    p_xp: p.xp.slice(-2000),
-    p_achievements: p.achievements,
-    p_lessons: p.lessons,
-  });
+/** FT-02: asks the server to (re)derive XP and achievements from its own records. No client claims are sent. */
+export async function syncProgress(client: SupabaseClient = requireClient()): Promise<void> {
+  const { error } = await client.rpc('sync_progress');
   if (error) throw error;
 }
 
@@ -95,8 +117,7 @@ export interface CloudSnapshot {
   daily: Progress['daily'];
 }
 
-export async function pullCloud(userId: string): Promise<CloudSnapshot> {
-  const c = requireClient();
+export async function pullCloud(userId: string, c: SupabaseClient = requireClient()): Promise<CloudSnapshot> {
   const [tests, xp, ach, les, daily] = await Promise.all([
     c.from('typing_tests').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1000),
     c.from('xp_transactions').select('key, amount, reason, created_at').eq('user_id', userId).limit(5000),
@@ -140,4 +161,33 @@ export function mergeSnapshot(local: Progress, cloud: CloudSnapshot): Progress {
     daily[d] = c ? { date: d, bestWpm: Math.max(c.bestWpm, r.bestWpm), bestAccuracy: Math.max(c.bestAccuracy, r.bestAccuracy), completed: c.completed || r.completed } : r;
   }
   return { ...local, history, xp, achievements: { ...cloud.achievements, ...local.achievements }, lessons, daily };
+}
+
+/** FT-10: everything the account holds, read through the user's own RLS-scoped access (no privileged keys). */
+export async function exportMyData(userId: string): Promise<Record<string, unknown>> {
+  const c = requireClient();
+  const page = async (table: string) => {
+    const rows: unknown[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await c.from(table).select('*').eq('user_id', userId).range(from, from + 999);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) return rows;
+    }
+  };
+  const [profile, friends] = await Promise.all([c.from('profiles').select('*').eq('id', userId).maybeSingle(), c.rpc('list_friends')]);
+  if (profile.error) throw profile.error;
+  if (friends.error) throw friends.error;
+  return {
+    exported_at: new Date().toISOString(),
+    format: 'frogtype-export-v1',
+    profile: profile.data,
+    typing_tests: await page('typing_tests'),
+    xp_transactions: await page('xp_transactions'),
+    user_achievements: await page('user_achievements'),
+    lesson_progress: await page('lesson_progress'),
+    challenge_submissions: await page('challenge_submissions'),
+    leaderboard_entries: await page('leaderboard_entries'),
+    friends: friends.data,
+  };
 }

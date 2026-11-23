@@ -12,3 +12,4 @@ blob-report
 supabase/.temp
 supabase/.branches
 *.tsbuildinfo
+dist-online

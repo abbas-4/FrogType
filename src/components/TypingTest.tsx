@@ -37,7 +37,7 @@ const fontStacks = {
 export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, autoFocus = true }: Props) {
   const settings = useSettings();
   const t = useTypingTest(source, sourceKey);
-  const { state, live, running, finished } = t;
+  const { state, live, running, finished, challengeId, consumeChallenge } = t;
   const inputRef = useRef<HTMLInputElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   const caretRef = useRef<HTMLDivElement>(null);
@@ -94,9 +94,11 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, a
       bigramErrors: state.bigramErrors,
       valid: f.valid,
       invalidReason: f.invalidReason,
+      ...(challengeId && f.valid ? { challengeId, keylog: state.keylog } : {}),
     };
+    if (r.challengeId) consumeChallenge();
     setResult({ key: sourceKey, r, outcome: onComplete(r) });
-  }, [finished, state, meta, onComplete, sourceKey]);
+  }, [finished, state, meta, onComplete, sourceKey, challengeId, consumeChallenge]);
 
   // Hidden tab during a run would corrupt timing; reset instead of recording a misleading result.
   useEffect(() => {

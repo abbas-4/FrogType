@@ -6,9 +6,11 @@ import { levelFromXp, totalXp } from '../domain/progression';
 import { summarize } from '../domain/stats';
 import { loadProfile, useAuth } from '../state/auth';
 import { useProgress } from '../state/store';
-import { signOut, updateProfile, USERNAME_RE } from '../services/social';
+import { deleteAccount, signOut, updateProfile, USERNAME_RE } from '../services/social';
+import { exportMyData } from '../services/cloud';
 import { errorMessage, isSupabaseConfigured } from '../services/supabase';
-import { getDecision, offerMigrationAgain, syncNow, useSync } from '../services/sync';
+import { clearDecision, getDecision, offerMigrationAgain, syncNow, useSync } from '../services/sync';
+import { removeProgress } from '../persistence/storage';
 
 export default function ProfilePage() {
   const progress = useProgress();
@@ -60,7 +62,7 @@ export default function ProfilePage() {
             <AuthForm />
           </>
         ) : (
-          <AccountPanel email={auth.user.email ?? ''} userId={auth.user.id} />
+          <AccountPanel email={auth.user.email ?? ''} userId={auth.user.id} pending={progress.pendingSync.length} />
         )}
         {auth.user && (
           <div className="mt-6 border-t border-surface-2 pt-4 text-sm text-sub">
@@ -82,7 +84,25 @@ export default function ProfilePage() {
   );
 }
 
-function AccountPanel({ email, userId }: { email: string; userId: string }) {
+/** Signs out; optionally removes this account's local copy so the next person on a shared browser starts clean. */
+async function signOutAndMaybeForget(userId: string, forget: boolean) {
+  await signOut();
+  if (forget) {
+    removeProgress(userId);
+    clearDecision(userId);
+  }
+}
+
+function download(name: string, data: unknown) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function AccountPanel({ email, userId, pending }: { email: string; userId: string; pending: number }) {
   const auth = useAuth();
   const [username, setUsername] = useState(auth.profile?.username ?? '');
   const [msg, setMsg] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null);
@@ -124,8 +144,84 @@ function AccountPanel({ email, userId }: { email: string; userId: string }) {
         <Link to="/settings#privacy" className="rounded-lg bg-surface-2 px-4 py-2 text-sm text-text hover:bg-surface">
           Privacy settings
         </Link>
-        <Button variant="danger" onClick={() => void signOut()}>Sign out</Button>
+        <Button variant="ghost" onClick={() => void signOut().catch((e) => setMsg({ text: errorMessage(e), tone: 'warn' }))}>Sign out</Button>
+        <Button
+          variant="ghost"
+          disabled={pending > 0}
+          onClick={() => void signOutAndMaybeForget(userId, true).catch((e) => setMsg({ text: errorMessage(e), tone: 'warn' }))}
+        >
+          Sign out and remove my data from this browser
+        </Button>
       </div>
+      {pending > 0 && <p className="text-xs text-sub">Removing local data is available once your {pending} queued result{pending === 1 ? ' has' : 's have'} uploaded.</p>}
+      <DataPanel email={email} userId={userId} username={auth.profile?.username ?? ''} />
+    </div>
+  );
+}
+
+/** FT-10: export and permanent deletion. Deletion needs the password (fresh sign-in) and the username typed out. */
+function DataPanel({ email, userId, username }: { email: string; userId: string; username: string }) {
+  const [busy, setBusy] = useState<'export' | 'delete' | null>(null);
+  const [msg, setMsg] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState('');
+  const [typed, setTyped] = useState('');
+
+  const doExport = async () => {
+    setBusy('export');
+    setMsg(null);
+    try {
+      download(`frogtype-export-${new Date().toISOString().slice(0, 10)}.json`, await exportMyData(userId));
+    } catch (e) {
+      setMsg({ text: `Export failed: ${errorMessage(e)}`, tone: 'warn' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy('delete');
+    setMsg(null);
+    try {
+      await deleteAccount(email, password, typed);
+      removeProgress(userId);
+      clearDecision(userId);
+    } catch (err) {
+      setMsg({ text: errorMessage(err), tone: 'warn' });
+      setBusy(null);
+    }
+  };
+
+  const input = 'mt-1 w-full rounded-lg bg-surface-2 px-3 py-2 text-text';
+  return (
+    <div className="mt-6 space-y-3 border-t border-surface-2 pt-4">
+      <h3 className="font-medium text-text">Your data</h3>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="ghost" disabled={busy !== null} onClick={() => void doExport()}>{busy === 'export' ? 'Preparing…' : 'Download my data (JSON)'}</Button>
+        {!confirming && <Button variant="danger" onClick={() => setConfirming(true)}>Delete account…</Button>}
+      </div>
+      {confirming && (
+        <form onSubmit={doDelete} className="max-w-md space-y-3 rounded-lg border border-error/40 p-4" aria-label="Delete account">
+          <p className="text-sm text-sub">
+            This permanently deletes your account, test history, XP, achievements, lesson progress, leaderboard entries and friendships from the server. It
+            cannot be undone. Nothing is kept except standard backups held by the hosting provider until they expire. Download your data first if you want a copy.
+          </p>
+          <label className="block text-sm text-sub">
+            Type your username (<code>{username}</code>) to confirm
+            <input className={input} autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
+          </label>
+          <label className="block text-sm text-sub">
+            Password
+            <input className={input} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          <div className="flex gap-2">
+            <Button type="submit" variant="danger" disabled={busy !== null || typed !== username || !password}>{busy === 'delete' ? 'Deleting…' : 'Permanently delete'}</Button>
+            <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>Cancel</Button>
+          </div>
+        </form>
+      )}
+      {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
     </div>
   );
 }

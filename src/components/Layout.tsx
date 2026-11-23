@@ -76,10 +76,11 @@ export function Layout() {
 
       {sync.migrationOffer !== null && (
         <div role="dialog" aria-labelledby="migrate-title" className="mb-4 rounded-xl border border-brand/40 bg-surface p-4">
-          <h2 id="migrate-title" className="font-medium text-text">Add this device's progress to your account?</h2>
+          <h2 id="migrate-title" className="font-medium text-text">Move this browser's guest progress into your account?</h2>
           <p className="mt-1 text-sm text-sub">
-            {sync.migrationOffer} test{sync.migrationOffer === 1 ? '' : 's'} on this device are not in your account yet. Uploading merges them with your cloud
-            progress — nothing in the cloud is replaced. Imported tests are kept in your history but do not count toward leaderboards.
+            {sync.migrationOffer} test{sync.migrationOffer === 1 ? ' was' : 's were'} recorded here while signed out. Only accept if they are yours: they move into this
+            account (and leave guest mode). Nothing in the cloud is replaced. Imported tests stay in your history as unverified and never count toward
+            leaderboards, XP or public achievements.
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -92,10 +93,10 @@ export function Layout() {
               }}
               className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-bg hover:bg-brand-hover disabled:opacity-50"
             >
-              {migrating ? 'Uploading…' : 'Add to my account'}
+              {migrating ? 'Moving…' : 'Move to my account'}
             </button>
             <button type="button" onClick={() => void declineMigration()} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-text">
-              Keep on this device only
+              Keep as guest data
             </button>
           </div>
         </div>

@@ -68,6 +68,12 @@ export interface TestResult {
   invalidReason?: string;
   lessonId?: string;
   dailyDate?: string;
+  /** server-issued challenge this test was typed against (ranked attempts only) */
+  challengeId?: string;
+  /** keystroke log for server replay: k = one char per event (\b backspace, \x17 delete word), t = ms since first key. Dropped after upload. */
+  keylog?: { k: string; t: number[] };
+  /** set after upload: true when the server replayed and verified the result */
+  verified?: boolean;
 }
 
 export interface XpTransaction {
