@@ -155,7 +155,7 @@ describe('two accounts in one browser', () => {
   it('a stale profile response cannot overwrite the next account\'s profile', async () => {
     const m = await load();
     m.signIn(A);
-    m.authStore.set({ profile: { id: A, username: 'alice', is_public: false, show_on_leaderboard: false, created_at: '' } });
+    m.authStore.set({ profile: { id: A, username: 'alice', is_public: false, show_on_leaderboard: false, avatar: null, bio: null, created_at: '' } });
     m.signIn(B);
     expect(m.authStore.get().profile).toBeNull();
   });

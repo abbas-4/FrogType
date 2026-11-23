@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Award, BarChart3, BookOpen, Keyboard, Medal, Menu, Settings as SettingsIcon, Target, User, X } from 'lucide-react';
+import { Award, BarChart3, BookOpen, Keyboard, LogOut, Medal, Menu, Settings as SettingsIcon, Target, User, X } from 'lucide-react';
 import { Logo } from './Logo';
+import { Avatar } from './Avatar';
+import { AccountMenu } from './AccountMenu';
 import { useProgress, useSettings } from '../state/store';
 import { useToasts } from '../state/toasts';
-import { useAuth } from '../state/auth';
+import { dismissSessionEnded, useAuth } from '../state/auth';
+import { isSupabaseConfigured } from '../services/supabase';
+import { signOutWithToast } from '../services/social';
 import { useSync, acceptMigration, declineMigration } from '../services/sync';
 import { levelFromXp, totalXp } from '../domain/progression';
 
@@ -101,10 +105,12 @@ export function Layout() {
             ))}
           </ul>
         </nav>
-        <NavLink to="/achievements" className="hidden shrink-0 items-center gap-2 rounded-lg text-sm text-sub hover:text-text md:flex" aria-label={levelLabel}>
-          <LevelMeter level={level.level} progress={level.progress} />
-          {auth.profile && <span className="hidden max-w-32 truncate text-text lg:inline">{auth.profile.username}</span>}
-        </NavLink>
+        <div className="hidden shrink-0 items-center gap-3 md:flex">
+          <NavLink to="/achievements" className="flex items-center rounded-lg text-sm text-sub hover:text-text" aria-label={levelLabel}>
+            <LevelMeter level={level.level} progress={level.progress} />
+          </NavLink>
+          <AccountMenu />
+        </div>
 
         <button
           ref={menuButton}
@@ -122,9 +128,29 @@ export function Layout() {
           id="mobile-menu"
           className={`absolute inset-x-0 top-full z-40 rounded-xl border border-surface-2 bg-surface p-2 shadow-xl transition duration-150 md:hidden ${menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-1 opacity-0'}`}
         >
+          {auth.user ? (
+            <NavLink to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-brand/5">
+              <Avatar avatar={auth.profile?.avatar} username={auth.profile?.username ?? '?'} size="sm" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-text">{auth.profile?.username ?? 'Your account'}</span>
+                <span className="block truncate text-xs text-sub">{auth.user.email}</span>
+              </span>
+            </NavLink>
+          ) : (
+            isSupabaseConfigured &&
+            auth.ready && (
+              <div className="flex gap-2 p-1">
+                <NavLink to="/signin" state={{ from: location.pathname }} onClick={() => setMenuOpen(false)} className="flex-1 rounded-lg bg-surface-2 px-3 py-2 text-center text-sm text-text">
+                  Sign in
+                </NavLink>
+                <NavLink to="/signup" onClick={() => setMenuOpen(false)} className="flex-1 rounded-lg bg-brand px-3 py-2 text-center text-sm font-medium text-bg">
+                  Create account
+                </NavLink>
+              </div>
+            )
+          )}
           <NavLink to="/achievements" onClick={() => setMenuOpen(false)} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm text-sub hover:bg-brand/5" aria-label={levelLabel}>
             <LevelMeter level={level.level} progress={level.progress} />
-            {auth.profile && <span className="truncate text-text">{auth.profile.username}</span>}
           </NavLink>
           <nav aria-label="Main menu" className="mt-1 border-t border-surface-2 pt-1">
             <ul>
@@ -145,16 +171,47 @@ export function Layout() {
               ))}
             </ul>
           </nav>
+          {auth.user && (
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                void signOutWithToast();
+              }}
+              className="mt-1 flex w-full items-center gap-3 rounded-lg border-t border-surface-2 px-3 py-2.5 text-sm text-text hover:bg-brand/5 hover:text-brand"
+            >
+              <LogOut size={20} aria-hidden="true" /> Sign out
+            </button>
+          )}
         </div>
       </header>
 
+      {auth.sessionEnded && (
+        <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-2 bg-surface px-4 py-3 text-sm">
+          <p className="text-sub">
+            <span className="text-text">You've been signed out.</span> Your session expired or you signed out in another window. Your synced progress is safe; tests you
+            take now are saved in this browser as a guest.
+          </p>
+          <div className="flex gap-2">
+            {isSupabaseConfigured && (
+              <NavLink to="/signin" state={{ from: location.pathname }} onClick={dismissSessionEnded} className="rounded-lg bg-brand px-3 py-1.5 font-medium text-bg hover:bg-brand-hover">
+                Sign in again
+              </NavLink>
+            )}
+            <button type="button" onClick={dismissSessionEnded} className="rounded-lg bg-surface-2 px-3 py-1.5 text-text">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {sync.migrationOffer !== null && (
         <div role="dialog" aria-labelledby="migrate-title" className="mb-4 rounded-xl border border-brand/40 bg-surface p-4">
-          <h2 id="migrate-title" className="font-medium text-text">Move this browser's guest progress into your account?</h2>
+          <h2 id="migrate-title" className="font-medium text-text">Import this browser's guest progress into your account?</h2>
           <p className="mt-1 text-sm text-sub">
             {sync.migrationOffer} test{sync.migrationOffer === 1 ? ' was' : 's were'} recorded here while signed out. Only accept if they are yours: they move into this
-            account (and leave guest mode). Nothing in the cloud is replaced. Imported tests stay in your history as unverified and never count toward
-            leaderboards, XP or public achievements.
+            account (and leave guest mode). Nothing already in your account is replaced, and tests are never uploaded twice. Imported tests stay in your history as
+            unverified and never count toward leaderboards, XP or public achievements. Nothing is uploaded unless you choose to.
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -167,7 +224,7 @@ export function Layout() {
               }}
               className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-bg hover:bg-brand-hover disabled:opacity-50"
             >
-              {migrating ? 'Moving…' : 'Move to my account'}
+              {migrating ? 'Importing…' : 'Import to my account'}
             </button>
             <button type="button" onClick={() => void declineMigration()} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-text">
               Keep as guest data

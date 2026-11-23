@@ -28,9 +28,6 @@ export const defaultSettings: Settings = {
   language: 'english',
   reducedMotion: 'system',
   showLiveWpm: true,
-  // FT-07: private until the user opts in
-  publicProfile: false,
-  showOnLeaderboard: false,
 };
 
 export const emptyProgress = (): Progress => ({
@@ -69,8 +66,6 @@ export function sanitizeSettings(raw: unknown): Settings {
     language: oneOf(r.language, ['english', 'spanish', 'german'], d.language),
     reducedMotion: oneOf(r.reducedMotion, ['system', 'on', 'off'], d.reducedMotion),
     showLiveWpm: bool(r.showLiveWpm, d.showLiveWpm),
-    publicProfile: bool(r.publicProfile, d.publicProfile),
-    showOnLeaderboard: bool(r.showOnLeaderboard, d.showOnLeaderboard),
   };
 }
 

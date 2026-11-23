@@ -52,7 +52,7 @@ Without configuration, Profile and Leaderboards say plainly that online features
 2. Apply the schema, using either of these:
    - Supabase CLI: `supabase init` (keeps the existing `supabase/migrations`), `supabase link --project-ref <ref>`, then `supabase db push`.
    - Dashboard: run every file in `supabase/migrations/` in order in the SQL editor.
-3. Under **Authentication → Providers**, make sure Email is enabled. Under **URL Configuration**, set your site URL and add exactly `<site>/reset-password` and `<site>/profile` as redirect URLs. Apply the auth settings in [the security checklist](docs/security/SECURITY-CHECKLIST.md#authentication) (confirmations, password policy, rate limits, SMTP).
+3. Under **Authentication → Providers**, make sure Email is enabled. Under **URL Configuration**, set your site URL and add exactly `<site>/profile`, `<site>/reset-password` and `<site>/settings` as redirect URLs. Apply the auth settings in [the security checklist](docs/security/SECURITY-CHECKLIST.md#authentication) (confirmations, password policy, rate limits, SMTP). For a public launch, follow [docs/ACCOUNTS-SETUP.md](docs/ACCOUNTS-SETUP.md) step by step (SMTP and DNS, CAPTCHA, SPA routing, live verification).
 4. Copy `.env.example` to `.env.local` and fill in your values:
    ```bash
    VITE_SUPABASE_URL=https://<ref>.supabase.co
@@ -63,7 +63,9 @@ Without configuration, Profile and Leaderboards say plainly that online features
 
 ### What turns on
 
-- Email/password sign-up, sign-in and password reset.
+- Accounts (optional; guests keep everything working locally): `/signup` with live validation, username availability, password rules, show/hide password and an email-confirmation screen with rate-limited resend; `/signin` with "Keep me signed in" (off = this tab only), unconfirmed-email recovery and password reset; a header account menu (Profile, Settings, Sign out); a notice when a session expires.
+- Profiles: username, built-in avatar, short bio, join date, level/XP, stats, earned achievements and recent activity. New accounts start with a public profile and a leaderboard listing; either can be turned off in Settings → Privacy.
+- Account settings (`/settings`): profile information, email change (both addresses confirm), password change (current password required; other devices signed out), privacy, data export, permanent deletion, sign out, and sign out + remove this browser's data.
 - **Safe migration.** On first sign-in, if this browser has tests that aren't in the account, FrogType *asks* before uploading. Uploading merges: tests are unioned by id, XP by key, and lesson bests take the max. Cloud data is never overwritten. Imported tests are stored but never ranked.
 - Automatic sync of new tests. When offline or on errors, results stay queued locally and retry when the connection returns.
 - Global and friends leaderboards (time 15/30/60/120 and words 10/25/50/100, English).
@@ -81,7 +83,8 @@ Without configuration, Profile and Leaderboards say plainly that online features
   - `sync_progress` (and the legacy `merge_progress`): XP and achievements are derived from server records only; client claims are ignored.
   - `get_leaderboard`, `get_public_profile`, `list_friends`, `send_friend_request`, `respond_friend_request`.
 - **Server-side daily targets.** The server computes daily challenge targets itself (`ft_daily_targets`, a port of the client's FNV-1a formula, checked for parity by tests). Completion is decided server-side.
-- **Locked-down execute rights.** `EXECUTE` is revoked from `PUBLIC` and granted per function. Profile updates are restricted by column (`username`, `is_public`, `show_on_leaderboard`).
+- **Locked-down execute rights.** `EXECUTE` is revoked from `PUBLIC` and granted per function. Profile updates are restricted by column (`username`, `is_public`, `show_on_leaderboard`, `avatar`, `bio`).
+- **Profiles (`20261124000000_account_profiles.sql`).** `avatar` must be one of the built-in keys and `bio` is one line of at most 160 characters (both CHECK constraints). A trigger trims the bio and limits username changes to 5 a day. `username_available` (rate-limited, also for anonymous sign-up forms) powers the live availability check. `get_public_profile` returns avatar and bio only for public profiles.
 
 ## Testing
 
@@ -119,7 +122,7 @@ See [docs/security/SECURITY-AUDIT.md](docs/security/SECURITY-AUDIT.md) for the f
 
 - **Leaderboards rank only server-verified results.** The passage comes from the server and the server re-scores the keystroke log, so edited scores and replays don't rank. A bot or modified client that types the real passage with human-like timing still can; rankings are not proof of human typing.
 - **Lesson and daily-challenge rewards** are recorded server-side but marked unverified, because those passages are generated in the browser. Public profiles show verified XP and achievements only.
-- **Accounts are private by default.** Public profile and leaderboard visibility are opt-in at sign-up and in Settings.
+- **Visibility is the user's choice.** New accounts start public and on leaderboards; Settings → Privacy turns either off immediately, enforced by the database, not just the UI.
 - **Each account has its own local storage** in the browser. Guest progress moves into an account only if you accept. Use **Sign out and remove my data from this browser** on shared machines.
 - Local data is not encrypted, and tampered local data only affects local stats.
 - The daily challenge uses the device clock's UTC date.

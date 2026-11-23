@@ -22,8 +22,6 @@ export interface Settings {
   language: Language;
   reducedMotion: ReducedMotion;
   showLiveWpm: boolean;
-  publicProfile: boolean;
-  showOnLeaderboard: boolean;
 }
 
 /** One second of a test. */
