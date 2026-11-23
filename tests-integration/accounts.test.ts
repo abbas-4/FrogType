@@ -132,7 +132,7 @@ describe('sign-in and confirmation emails', () => {
     expect(error).toBeNull();
     created.push(data.user!.id);
     expect((await anon().auth.signInWithPassword({ email, password: PASSWORD })).error?.code).toBe('email_not_confirmed');
-    expect((await anon().auth.signInWithPassword({ email, password: 'Wrong-Passw0rd' })).error?.code).toBe('invalid_credentials');
+    expect((await anon().auth.signInWithPassword({ email, password: 'Wrong-Passw0rd' })).error?.code).toBe('invalid_credentials'); // gitleaks:allow (synthetic wrong password)
   });
 
   it('resend does not reveal whether an email exists or is already confirmed', async () => {
