@@ -9,6 +9,10 @@ updates:
       dev-dependencies:
         dependency-type: development
         update-types: [minor, patch]
+    ignore:
+      # typescript-eslint 8.x peers typescript <6.1.0; remove once it supports 7.
+      - dependency-name: typescript
+        versions: [">=7.0.0"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
