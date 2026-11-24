@@ -5,7 +5,7 @@ import { Button, Notice } from './ui';
 import { usernameStatusText, useUsernameStatus } from '../hooks/useUsernameStatus';
 import { AVATARS, BIO_MAX, normalizeBio, type AvatarKey } from '../domain/avatars';
 import { loadProfile, type Profile } from '../state/auth';
-import { updateProfile, usernameProblem, type ProfilePatch } from '../services/social';
+import { updateProfile, usernameProblem, USERNAME_TAKEN, type ProfilePatch } from '../services/social';
 import { errorMessage } from '../services/supabase';
 
 const titleCase = (s: string) => s[0]!.toUpperCase() + s.slice(1);
@@ -32,7 +32,7 @@ export function ProfileEditor({
   const [msg, setMsg] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null);
   const status = useUsernameStatus(username, profile.username);
 
-  const usernameError = usernameProblem(username) ?? (status === 'taken' ? 'That username is taken. Try another.' : null);
+  const usernameError = usernameProblem(username) ?? (status === 'taken' ? USERNAME_TAKEN : null);
   const cleanBio = normalizeBio(bio);
   const bioError = cleanBio.length > BIO_MAX ? `Bio must be at most ${BIO_MAX} characters.` : null;
   const patch: ProfilePatch = {
@@ -70,7 +70,7 @@ export function ProfileEditor({
         spellCheck={false}
         maxLength={20}
         value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        onChange={(e) => setUsername(e.target.value.trim())} // spaces are never valid in a username
         error={username !== profile.username ? usernameError : null}
         hint="3–20 letters, numbers or underscores. Your public profile link changes with it."
         status={username !== profile.username && !usernameError ? usernameStatusText(status) : null}

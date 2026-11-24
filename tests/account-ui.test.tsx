@@ -210,7 +210,7 @@ describe('ProfileEditor', () => {
     const user = renderEditor();
     const name = screen.getByLabelText('Username');
     await user.clear(name);
-    await user.type(name, 'bad name');
+    await user.type(name, 'bad-name');
     await user.click(screen.getByRole('radio', { name: 'Cat' }));
 
     expect(screen.getByText('Use only letters, numbers and underscores.')).toBeInTheDocument();
@@ -238,9 +238,9 @@ describe('updateProfile', () => {
     expect(h.updates.map((u) => u.patch)).toEqual([{ bio: 'hi there' }, { bio: null }, { avatar: null }]);
   });
 
-  it('maps a unique violation to "That username is taken."', async () => {
+  it('maps a unique violation to the taken message', async () => {
     h.updateError = { code: '23505', message: 'duplicate key value violates unique constraint' };
-    await expect(updateProfile(A, { username: 'bob_frog' })).rejects.toThrow('That username is taken.');
+    await expect(updateProfile(A, { username: 'bob_frog' })).rejects.toThrow('This username is already taken. Please choose another one.');
   });
 
   it('maps the server rate limit to a friendly message', async () => {

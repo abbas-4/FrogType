@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Field, PasswordField, PasswordRules } from './forms';
-import { ProfileEditor } from './ProfileEditor';
 import { Button, Card, Notice } from './ui';
 import { useAuth } from '../state/auth';
 import { pushToast } from '../state/toasts';
@@ -52,20 +51,12 @@ export function AccountSettings() {
   const user = auth.user!;
   return (
     <Card>
-      <h2 id="account" className={h2}>
+      {/* visually hidden: still names the card for screen readers and anchors the #account link */}
+      <h2 id="account" className="sr-only">
         Account
       </h2>
-      <p className="text-sm text-sub">
-        Signed in as <span className="break-all text-text">{user.email}</span>
-      </p>
       <EmailChangeLanding />
-      <div className="mt-6 space-y-8 divide-y divide-surface-2 [&>*]:pt-6 [&>*:first-child]:pt-0">
-        <section aria-labelledby="profile-info">
-          <h3 id="profile-info" className={`${h3} mb-3`}>
-            Profile information
-          </h3>
-          {auth.profile ? <ProfileEditor userId={user.id} profile={auth.profile} /> : <p className="text-sm text-sub">Loading…</p>}
-        </section>
+      <div className="space-y-8 divide-y divide-surface-2 [&>*]:pt-6 [&>*:first-child]:pt-0">
         <EmailSection email={user.email ?? ''} pendingEmail={user.new_email} />
         <PasswordSection email={user.email ?? ''} />
         <SignOutSection userId={user.id} />
@@ -79,16 +70,16 @@ function EmailChangeLanding() {
   const location = useLocation();
   const auth = useAuth();
   if (landingAuth.path !== '/settings' || location.key !== 'default') return null;
-  if (landingAuth.error) return <div className="mt-3"><Notice tone="warn">That email-change link is invalid or has expired. Start the change again below.</Notice></div>;
+  if (landingAuth.error) return <div className="mb-6"><Notice tone="warn">That email-change link is invalid or has expired. Start the change again below.</Notice></div>;
   if (landingAuth.message)
     return (
-      <div className="mt-3">
+      <div className="mb-6">
         <Notice>One address confirmed. Now open the link we sent to the other address to finish changing your email.</Notice>
       </div>
     );
   if (landingAuth.hadCode && auth.user)
     return (
-      <div className="mt-3">
+      <div className="mb-6">
         <Notice>Your email address has been changed to {auth.user.email}.</Notice>
       </div>
     );

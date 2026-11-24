@@ -14,6 +14,7 @@ import {
   signIn,
   signUp,
   usernameProblem,
+  USERNAME_TAKEN,
 } from '../services/social';
 import { errorMessage, rememberSession } from '../services/supabase';
 
@@ -73,27 +74,27 @@ export function ResendButton({ email, initialCooldown = 60 }: { email: string; i
 // ---------------------------------------------------------------- sign in
 
 export function SignInForm() {
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(rememberSession);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
-  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState<string | null>(null); // the account's email, for the resend button
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setMsg(null);
-    setUnconfirmed(false);
-    if (!email.trim() || !password) return setMsg({ text: 'Enter your email address and password.', tone: 'warn' });
-    // Browsers that saved the FrogType username as the login (before the email was marked autocomplete="username") fill it here.
-    if (!EMAIL_RE.test(email.trim())) return setMsg({ text: 'Sign in with the email address you created your account with, not your username.', tone: 'warn' });
+    setUnconfirmed(null);
+    const id = login.trim();
+    if (!id || !password) return setMsg({ text: 'Enter your email or username and your password.', tone: 'warn' });
+    if (id.includes('@') ? !EMAIL_RE.test(id) : usernameProblem(id)) return setMsg({ text: 'Enter a valid email address or username.', tone: 'warn' });
     setBusy(true);
     try {
-      await signIn(email, password, remember);
+      await signIn(id, password, remember);
       // success: the auth listener updates the session and the page redirects
     } catch (err) {
-      setUnconfirmed(err instanceof EmailNotConfirmedError);
+      setUnconfirmed(err instanceof EmailNotConfirmedError ? err.email || id : null);
       setMsg({ text: errorMessage(err), tone: 'warn' });
       setBusy(false);
     }
@@ -102,7 +103,17 @@ export function SignInForm() {
   return (
     <form onSubmit={submit} noValidate className="space-y-4" aria-label="Sign in" aria-busy={busy}>
       <div className="space-y-4">
-        <Field label="Email" type="email" autoComplete="username" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Field
+          label="Email or username"
+          placeholder="Email or username"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          required
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
+        />
         <PasswordField label="Password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
           <label className="flex items-center gap-2 text-sub">
@@ -119,7 +130,7 @@ export function SignInForm() {
         {busy ? 'Signing in…' : 'Sign in'}
       </Button>
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
-      {unconfirmed && <ResendButton email={email} initialCooldown={0} />}
+      {unconfirmed && <ResendButton email={unconfirmed} initialCooldown={0} />}
     </form>
   );
 }
@@ -144,7 +155,7 @@ export function SignUpForm() {
 
   const errors: Record<SignUpField, string | null> = {
     email: EMAIL_RE.test(email.trim()) ? null : 'Enter a valid email address.',
-    username: usernameProblem(username) ?? (status === 'taken' || takenAtSubmit === username ? 'That username is taken. Try another.' : null),
+    username: usernameProblem(username) ?? (status === 'taken' || takenAtSubmit === username ? USERNAME_TAKEN : null),
     password: passwordProblem(password),
     confirm: confirm === password ? null : 'The passwords do not match.',
   };
@@ -213,7 +224,7 @@ export function SignUpForm() {
           maxLength={20}
           value={username}
           onChange={(e) => {
-            setUsername(e.target.value);
+            setUsername(e.target.value.trim()); // spaces are never valid in a username
             setTakenAtSubmit(null);
           }}
           onBlur={blur('username')}

@@ -81,10 +81,10 @@ select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.
            where n.nspname = 'public' and p.prosecdef and p.proowner <> 'postgres'::regrole), 0, 'security definer functions are owned by postgres');
 select is(array(select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                 where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1),
-  array['get_leaderboard', 'get_public_profile', 'username_available'], 'anon can execute only the public read RPCs and the rate-limited username check');
+  array['email_for_sign_in', 'get_leaderboard', 'get_public_profile', 'username_available'], 'anon can execute only the public read RPCs and the rate-limited username check and username sign-in');
 select is(array(select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                 where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute') order by 1),
-  array['delete_my_account', 'get_leaderboard', 'get_public_profile', 'import_tests', 'issue_challenge', 'list_friends', 'merge_progress',
+  array['delete_my_account', 'email_for_sign_in', 'get_leaderboard', 'get_public_profile', 'import_tests', 'issue_challenge', 'list_friends', 'merge_progress',
         'respond_friend_request', 'send_friend_request', 'submit_test', 'sync_progress', 'username_available'],
   'authenticated can execute only the intended API (helpers like ft_award/ft_replay/ft_rate_limit are private)');
 select is((select count(*)::int from information_schema.role_table_grants
