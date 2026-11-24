@@ -85,7 +85,9 @@ export function SignInForm() {
     if (busy) return;
     setMsg(null);
     setUnconfirmed(false);
-    if (!EMAIL_RE.test(email.trim()) || !password) return setMsg({ text: 'Enter your email address and password.', tone: 'warn' });
+    if (!email.trim() || !password) return setMsg({ text: 'Enter your email address and password.', tone: 'warn' });
+    // Browsers that saved the FrogType username as the login (before the email was marked autocomplete="username") fill it here.
+    if (!EMAIL_RE.test(email.trim())) return setMsg({ text: 'Sign in with the email address you created your account with, not your username.', tone: 'warn' });
     setBusy(true);
     try {
       await signIn(email, password, remember);
@@ -100,7 +102,7 @@ export function SignInForm() {
   return (
     <form onSubmit={submit} noValidate className="space-y-4" aria-label="Sign in" aria-busy={busy}>
       <div className="space-y-4">
-        <Field label="Email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Field label="Email" type="email" autoComplete="username" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <PasswordField label="Password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
           <label className="flex items-center gap-2 text-sub">
@@ -191,7 +193,8 @@ export function SignUpForm() {
           label="Email"
           name="email"
           type="email"
-          autoComplete="email"
+          // The email is the login: password managers save the autocomplete="username" field with the password.
+          autoComplete="username"
           inputMode="email"
           required
           value={email}
@@ -203,7 +206,7 @@ export function SignUpForm() {
         <Field
           label="Username"
           name="username"
-          autoComplete="username"
+          autoComplete="nickname"
           autoCapitalize="off"
           spellCheck={false}
           required

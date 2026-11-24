@@ -65,7 +65,7 @@ export function ProfileEditor({
         label="Username"
         name="username"
         autoFocus={autoFocus}
-        autoComplete="username"
+        autoComplete="nickname"
         autoCapitalize="off"
         spellCheck={false}
         maxLength={20}

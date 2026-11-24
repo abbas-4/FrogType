@@ -147,6 +147,23 @@ describe('SignInForm', () => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
   });
 
+  it('marks the email, not the FrogType username, as the login for password managers', () => {
+    renderForm(<SignUpForm />);
+    expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'username');
+    expect(screen.getByLabelText('Username')).toHaveAttribute('autocomplete', 'nickname');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'new-password');
+  });
+
+  it('fills the saved login into the email field and explains a username typed (or autofilled) there', async () => {
+    const user = renderForm(<SignInForm />);
+    expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'username');
+    await user.type(screen.getByLabelText('Email'), 'frog_fan');
+    await user.type(screen.getByLabelText('Password'), GOOD_PW);
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(screen.getByText('Sign in with the email address you created your account with, not your username.')).toBeInTheDocument();
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
   it('does not call signIn without an email and password', async () => {
     const user = renderForm(<SignInForm />);
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
