@@ -25,6 +25,8 @@ interface Props {
   onComplete: (r: TestResult) => RecordOutcome | null;
   /** extra content on the results screen (lesson / daily verdicts) */
   resultExtra?: (r: TestResult) => ReactNode;
+  /** results "Next" action; defaults to a fresh test from the same source */
+  onNext?: () => void;
   autoFocus?: boolean;
 }
 
@@ -34,7 +36,7 @@ const fontStacks = {
   serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
 };
 
-export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, autoFocus = true }: Props) {
+export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, onNext, autoFocus = true }: Props) {
   const settings = useSettings();
   const t = useTypingTest(source, sourceKey);
   const { state, live, running, finished, challengeId, consumeChallenge } = t;
@@ -216,7 +218,7 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, a
   if (result) {
     return (
       <Suspense fallback={<div className="h-96" />}>
-        <ResultsView result={result.r} outcome={result.outcome} onRestart={() => restart(true)} onNext={() => restart(false)} extra={resultExtra?.(result.r)} />
+        <ResultsView result={result.r} outcome={result.outcome} onRestart={() => restart(true)} onNext={onNext ?? (() => restart(false))} extra={resultExtra?.(result.r)} />
       </Suspense>
     );
   }

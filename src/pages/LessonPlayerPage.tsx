@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { TypingTest } from '../components/TypingTest';
 import { Notice } from '../components/ui';
@@ -12,6 +12,7 @@ export default function LessonPlayerPage() {
   const { id = '' } = useParams();
   const lesson = getLesson(id);
   const progress = useProgress();
+  const navigate = useNavigate();
   const words = useMemo(() => lesson?.text.split(' ') ?? [], [lesson]);
   const meta = useMemo(() => ({ mode: 'lesson' as const, mode2: words.length, lessonId: id }), [words.length, id]);
   const onComplete = useCallback((r: TestResult) => saveResult(r, { lesson }), [lesson]);
@@ -25,7 +26,9 @@ export default function LessonPlayerPage() {
     );
   }
   const idx = lessons.findIndex((l) => l.id === lesson.id);
+  // Lessons are ordered across categories, so this crosses into the next category; after the last one, back to the list.
   const next = lessons[idx + 1];
+  const nextPath = next ? `/lessons/${next.id}` : '/lessons';
   const p = progress.lessons[lesson.id];
 
   return (
@@ -34,24 +37,24 @@ export default function LessonPlayerPage() {
         <ArrowLeft size={16} /> All lessons
       </Link>
       <h1 className="text-xl font-semibold text-text">{lesson.title}</h1>
-      <p className="mt-1 text-sub">{lesson.description}</p>
       <p className="mt-1 mb-8 text-sm text-sub">
         Pass: {lesson.targetWpm} wpm at {lesson.targetAccuracy}% accuracy
         {p && ` · attempts ${p.attempts} · best ${Math.round(p.bestWpm)} wpm, ${Math.floor(p.bestAccuracy)}%`}
         {p?.completed && <span className="text-brand"> · passed</span>}
       </p>
+      {/* keyed by lesson: Next must start a fresh player (state, result, completion guard), never the previous lesson */}
       <TypingTest
+        key={lesson.id}
         source={{ kind: 'fixed', words }}
         sourceKey={lesson.id}
         meta={meta}
         onComplete={onComplete}
+        onNext={() => navigate(nextPath)}
         resultExtra={(r) => {
           const passed = r.valid && r.wpm >= lesson.targetWpm && r.accuracy >= lesson.targetAccuracy;
           return (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {passed ? (
-                <Notice>Lesson passed. {r.accuracy < 100 ? 'Repeat it to make it automatic, or move on.' : 'Flawless.'}</Notice>
-              ) : (
+              {!passed && (
                 <Notice tone="warn">
                   Not yet: {r.wpm < lesson.targetWpm ? `speed ${Math.round(r.wpm)}/${lesson.targetWpm} wpm` : ''}
                   {r.wpm < lesson.targetWpm && r.accuracy < lesson.targetAccuracy ? ', ' : ''}
@@ -59,11 +62,9 @@ export default function LessonPlayerPage() {
                   {!r.valid ? r.invalidReason : ''}
                 </Notice>
               )}
-              {next && (
-                <Link to={`/lessons/${next.id}`} className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                  Next: {next.title} <ArrowRight size={16} />
-                </Link>
-              )}
+              <Link to={nextPath} className="ml-auto inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                {next ? `Next: ${next.title}` : 'All lessons'} <ArrowRight size={16} />
+              </Link>
             </div>
           );
         }}
