@@ -41,7 +41,7 @@ export default function ResultsView({ result: r, outcome, onRestart, onNext, ext
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Item label="test type" value={modeLabel(r)} />
+        {r.mode !== 'lesson' && <Item label="test type" value={modeLabel(r)} />}
         <Item label="raw" value={Math.round(r.raw)} />
         <Item label="consistency" value={`${Math.round(r.consistency)}%`} />
         <Item label="characters" value={`${r.chars.correct}/${r.chars.incorrect}/${r.chars.extra}/${r.chars.missed}`} hint="correct / incorrect / extra / missed" />

@@ -36,6 +36,17 @@ describe('<ResultsView> actions', () => {
     expect(screen.queryByRole('button', { name: 'Next test' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'View statistics' })).toBeNull();
   });
+
+  it('hides test type only for lesson results', () => {
+    render(
+      <MemoryRouter>
+        <ResultsView result={makeResult({ mode: 'lesson', lessonId: 'beginner-1' })} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('test type')).toBeNull();
+    expect(screen.queryByText(/beginner-1/)).toBeNull();
+    expect(screen.getByText('raw')).toBeInTheDocument();
+  });
 });
 
 describe('<ModeBar>', () => {
