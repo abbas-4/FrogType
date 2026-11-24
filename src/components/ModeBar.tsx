@@ -22,7 +22,7 @@ export function ModeBar({ settings, mode, setMode }: { settings: Settings; mode:
   };
 
   return (
-    <div className="mx-auto mb-10 flex max-w-full flex-wrap items-center justify-center gap-2 text-xs">
+    <div className="focus-hide mx-auto mb-10 flex max-w-full flex-wrap items-center justify-center gap-2 text-xs">
       <div className={group}>
         <button type="button" aria-pressed={settings.punctuation} className={btn(settings.punctuation)} onClick={() => updateSettings({ punctuation: !settings.punctuation })}>
           <AtSign size={12} aria-hidden="true" /> punctuation

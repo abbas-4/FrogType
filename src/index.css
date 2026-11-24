@@ -84,6 +84,16 @@ body {
   transition: transform 150ms ease-out;
 }
 
+/* focus mode: chrome fades out while a test is being typed; space is kept so nothing shifts */
+.focus-hide {
+  transition: opacity 250ms ease, visibility 250ms, color 150ms, background-color 150ms;
+}
+html[data-typing] .focus-hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* reduced motion: system preference or explicit setting */
 @media (prefers-reduced-motion: reduce) {
   html:not([data-motion="off"]) *,
