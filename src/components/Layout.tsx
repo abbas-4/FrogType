@@ -75,7 +75,7 @@ export function Layout() {
         <NavLink to="/" aria-label="FrogType home" className="shrink-0 rounded-lg">
           <Logo />
         </NavLink>
-        <nav aria-label="Main" className="hidden md:block" onKeyDown={(e) => e.key === 'Escape' && setTipsHidden(true)} onFocus={() => setTipsHidden(false)}>
+        <nav aria-label="Main" className="focus-hide hidden md:block" onKeyDown={(e) => e.key === 'Escape' && setTipsHidden(true)} onFocus={() => setTipsHidden(false)}>
           <ul className="flex items-center gap-1">
             {nav.map(({ to, label, icon: Icon, end }) => (
               <li key={to} onMouseEnter={() => setTipsHidden(false)}>
@@ -119,7 +119,7 @@ export function Layout() {
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           onClick={() => setMenuOpen((o) => !o)}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-sub hover:bg-brand/5 hover:text-brand md:hidden"
+          className="focus-hide flex h-10 w-10 items-center justify-center rounded-lg text-sub hover:bg-brand/5 hover:text-brand md:hidden"
         >
           {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
         </button>

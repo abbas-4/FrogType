@@ -42,6 +42,24 @@ describe('<TypingTest>', () => {
     expect(letters.every((l) => l.classList.contains('text-sub'))).toBe(true);
   });
 
+  it('enters focus mode while typing and leaves it on Esc, restart and finish', async () => {
+    const user = setup(['ab', 'cd']);
+    const input = screen.getByTestId('typing-input');
+    const typing = () => 'typing' in document.documentElement.dataset;
+    expect(typing()).toBe(false);
+    await user.type(input, 'a');
+    expect(typing()).toBe(true);
+    await user.keyboard('{Escape}');
+    expect(typing()).toBe(false);
+    await user.type(input, 'b');
+    expect(typing()).toBe(true);
+    await user.keyboard('{Tab}');
+    expect(typing()).toBe(false);
+    await user.type(input, 'ab cd');
+    await screen.findByTestId('results');
+    expect(typing()).toBe(false);
+  });
+
   it('never renders typed text as HTML', async () => {
     const user = setup(['<b>x</b>']);
     await user.type(screen.getByTestId('typing-input'), '<b>');

@@ -67,6 +67,16 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, a
     if (autoFocus) focus();
   }, [autoFocus, focus]);
 
+  // Focus mode: while typing, `.focus-hide` chrome (nav, mode bar, hints) fades out; Esc/blur, finish, restart or unmount bring it back.
+  const focusMode = running && focused;
+  useEffect(() => {
+    if (!focusMode) return;
+    document.documentElement.dataset.typing = '';
+    return () => {
+      delete document.documentElement.dataset.typing;
+    };
+  }, [focusMode]);
+
   // Build the result exactly once per finished test.
   const doneFor = useRef<number | null>(null);
   useEffect(() => {
@@ -279,12 +289,12 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, a
           type="button"
           onClick={() => restart(false)}
           aria-label="Restart test"
-          className="rounded-lg p-3 text-sub transition-colors hover:text-text"
+          className="focus-hide rounded-lg p-3 text-sub hover:text-text"
         >
           <RotateCcw size={20} />
         </button>
         {notice && <p role="status" className="text-sm text-error">{notice}</p>}
-        <p className="text-xs text-sub">
+        <p className="focus-hide text-xs text-sub">
           <kbd className="rounded bg-surface px-1.5 py-0.5">tab</kbd> restart · <kbd className="rounded bg-surface px-1.5 py-0.5">esc</kbd> leave typing area ·{' '}
           <kbd className="rounded bg-surface px-1.5 py-0.5">ctrl/alt + backspace</kbd> delete word
         </p>
