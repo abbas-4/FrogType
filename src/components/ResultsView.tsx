@@ -25,7 +25,7 @@ export default function ResultsView({ result: r, outcome, onRestart, onNext, ext
   const xp = outcome?.xpAdded.reduce((a, t) => a + t.amount, 0) ?? 0;
   return (
     <div className="mx-auto w-full max-w-5xl animate-fade-in" data-testid="results">
-      {!r.valid && (
+      {!r.valid && r.mode !== 'lesson' && (
         <p role="alert" className="mb-3 rounded-lg border border-error/40 px-4 py-2 text-sm text-error">
           Invalid test — {r.invalidReason}. It was not saved to your history.
         </p>

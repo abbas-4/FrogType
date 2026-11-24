@@ -94,10 +94,12 @@ test('passing a lesson marks it complete and awards XP', async ({ page }) => {
   const text = (await wordsOnScreen(page)).join(' ');
   await typeText(page, text, 80);
   await expect(page.getByTestId('results')).toBeVisible();
-  // completion state lives in the lesson header; results carry the XP badge and no verdict box
+  // completion state lives in the lesson header; results carry the XP badge and no verdict box or Next link
   await expect(page.getByText('· passed')).toBeVisible();
   await expect(page.getByText(/\+\d+ XP/)).toBeVisible();
   await expect(page.getByText(/Lesson passed/)).toHaveCount(0);
+  await expect(page.getByText(/Not yet|Invalid test/)).toHaveCount(0);
+  await expect(page.getByTestId('results').getByRole('link', { name: /Next:/ })).toHaveCount(0);
   // Next moves on to the following lesson with its own text
   await page.getByRole('button', { name: 'Next test' }).click();
   await expect(page).toHaveURL(/\/lessons\/home-2$/);
@@ -105,6 +107,11 @@ test('passing a lesson marks it complete and awards XP', async ({ page }) => {
   expect((await wordsOnScreen(page)).join(' ')).not.toBe(text);
   await page.getByRole('link', { name: 'All lessons' }).click();
   await expect(page.getByRole('link', { name: /Left hand home/ }).getByLabel('Passed')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Left hand home/ })).toHaveAttribute('data-completed', 'true');
+  await expect(page.getByRole('link', { name: /Right hand home/ })).not.toHaveAttribute('data-completed');
+  // completion survives a reload
+  await page.reload();
+  await expect(page.getByRole('link', { name: /Left hand home/ })).toHaveAttribute('data-completed', 'true');
 });
 
 test('online features explain they need configuration instead of faking data', async ({ page }) => {

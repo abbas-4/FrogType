@@ -73,7 +73,13 @@ export default function LessonsPage() {
                   const p = progress.lessons[l.id];
                   return (
                     <li key={l.id}>
-                      <Link to={`/lessons/${l.id}`} className="flex h-full flex-col rounded-xl bg-surface p-4 transition-colors hover:bg-surface-2">
+                      <Link
+                        to={`/lessons/${l.id}`}
+                        data-completed={p?.completed || undefined}
+                        className={`flex h-full flex-col rounded-xl p-4 transition-colors ${
+                          p?.completed ? 'bg-brand/10 ring-1 ring-inset ring-brand/50 hover:bg-brand/15' : 'bg-surface hover:bg-surface-2'
+                        }`}
+                      >
                         <span className="flex items-center justify-between gap-2">
                           <span className="font-medium text-text">{l.title}</span>
                           {p?.completed ? <CheckCircle2 size={18} className="text-brand" aria-label="Passed" /> : <Circle size={18} className="text-sub" aria-label="Not passed" />}

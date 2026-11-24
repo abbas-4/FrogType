@@ -87,6 +87,16 @@ describe('recordResult', () => {
     expect(again.progress.lessons['home-1']).toMatchObject({ attempts: 3, bestWpm: 35, firstWpm: 5 });
   });
 
+  it('completes a lesson only when both speed and accuracy targets are met', () => {
+    const lesson = getLesson('home-1')!;
+    const run = (wpm: number, accuracy: number, valid = true) =>
+      recordResult(emptyProgress(), makeResult({ mode: 'lesson', wpm, accuracy, valid }), { now, lesson }).progress.lessons['home-1'];
+    expect(run(lesson.targetWpm + 20, lesson.targetAccuracy - 1)).toMatchObject({ completed: false });
+    expect(run(lesson.targetWpm - 1, 100)).toMatchObject({ completed: false });
+    expect(run(lesson.targetWpm, lesson.targetAccuracy)).toMatchObject({ completed: true });
+    expect(run(lesson.targetWpm + 20, 100, false)).toBeUndefined();
+  });
+
   it('completes the daily challenge once', () => {
     const daily = dailyChallenge('2026-11-22');
     const r1 = recordResult(emptyProgress(), makeResult({ mode: 'daily', wpm: 100, accuracy: 99 }), { now, daily });

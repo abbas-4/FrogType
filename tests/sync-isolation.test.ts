@@ -91,6 +91,21 @@ describe('two accounts in one browser', () => {
     expect(m.progressStore.get().history).toEqual([]);
   });
 
+  it('keeps each account\'s completed lessons through sign-out and sign-in', async () => {
+    const done = { attempts: 1, bestWpm: 30, bestAccuracy: 99, completed: true, firstWpm: 30, lastAt: '2026-11-24T00:00:00.000Z' };
+    saveProgress({ ...emptyProgress(), lessons: { 'home-1': done } }, A);
+    const m = await load();
+    m.signIn(A);
+    expect(m.progressStore.get().lessons['home-1']).toMatchObject({ completed: true });
+    m.signOut();
+    expect(m.progressStore.get().lessons).toEqual({});
+    m.signIn(B);
+    expect(m.progressStore.get().lessons).toEqual({});
+    m.signOut();
+    m.signIn(A);
+    expect(m.progressStore.get().lessons['home-1']).toMatchObject({ completed: true });
+  });
+
   it('never uploads A\'s offline queue under B', async () => {
     const m = await load();
     m.signIn(A);

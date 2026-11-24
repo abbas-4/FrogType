@@ -37,6 +37,24 @@ describe('<ResultsView> actions', () => {
     expect(screen.queryByRole('link', { name: 'View statistics' })).toBeNull();
   });
 
+  it('shows the invalid-test notice for tests but not for lessons', () => {
+    const invalid = { valid: false, invalidReason: 'Accuracy below 50%' };
+    const { unmount } = render(
+      <MemoryRouter>
+        <ResultsView result={makeResult(invalid)} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Invalid test');
+    unmount();
+    render(
+      <MemoryRouter>
+        <ResultsView result={makeResult({ ...invalid, mode: 'lesson', lessonId: 'beginner-1' })} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('raw')).toBeInTheDocument();
+  });
+
   it('hides test type only for lesson results', () => {
     render(
       <MemoryRouter>

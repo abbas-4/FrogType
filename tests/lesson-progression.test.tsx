@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import LessonPlayerPage from '../src/pages/LessonPlayerPage';
+import LessonsPage from '../src/pages/LessonsPage';
 import { getLesson, lessons } from '../src/domain/lessons';
 import { loadProgress } from '../src/persistence/storage';
 import { progressStore } from '../src/state/store';
@@ -49,7 +50,7 @@ describe('lesson progression', { timeout: 20_000 }, () => {
     expect(screen.getByTestId('progress')).toHaveTextContent(`0/${lesson('beginner-2').text.split(' ').length}`);
     await finish(user, 'beginner-2');
 
-    await user.click(screen.getByRole('link', { name: /Next: First words/ }));
+    await user.click(screen.getByRole('button', { name: 'Next test' }));
     expect(screen.getByRole('heading')).toHaveTextContent(lesson('beginner-3').title);
     expect(shown()).toBe(lesson('beginner-3').text.replaceAll(' ', ''));
 
@@ -71,7 +72,6 @@ describe('lesson progression', { timeout: 20_000 }, () => {
     const last = lessons[lessons.length - 1]!.id;
     const user = setup(last);
     await finish(user, last);
-    expect(within(screen.getByTestId('results')).getByRole('link', { name: 'All lessons' })).toHaveAttribute('href', '/lessons');
     await user.click(screen.getByRole('button', { name: 'Next test' }));
     expect(screen.getByText('Lessons list')).toBeInTheDocument();
   });
@@ -103,7 +103,25 @@ describe('lesson progression', { timeout: 20_000 }, () => {
     expect(screen.queryByText('test type')).toBeNull();
     expect(screen.queryByText(/beginner-1/)).toBeNull();
     expect(screen.queryByText(/Lesson passed/)).toBeNull();
+    expect(screen.queryByText(/Not yet/)).toBeNull();
+    expect(within(screen.getByTestId('results')).queryByRole('link', { name: /Next:|All lessons/ })).toBeNull();
     for (const label of ['wpm', 'acc', 'raw', 'consistency', 'characters', 'time', 'words']) expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.getByText(/XP/)).toBeInTheDocument();
+  });
+
+  it('every completed lesson card gets the completed style; others do not', () => {
+    const done = { attempts: 1, bestWpm: 30, bestAccuracy: 99, completed: true, firstWpm: 30, lastAt: '' };
+    const doneIds = ['beginner-1', 'home-1', lessons[lessons.length - 1]!.id];
+    progressStore.set({ ...progressStore.get(), lessons: Object.fromEntries([...doneIds.map((id) => [id, done]), ['home-2', { ...done, completed: false }]]) });
+    render(
+      <MemoryRouter>
+        <LessonsPage />
+      </MemoryRouter>,
+    );
+    for (const l of lessons) {
+      const card = screen.getByRole('link', { name: new RegExp(`^${l.title}`) });
+      if (doneIds.includes(l.id)) expect(card).toHaveAttribute('data-completed', 'true');
+      else expect(card).not.toHaveAttribute('data-completed');
+    }
   });
 });
