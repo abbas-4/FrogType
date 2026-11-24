@@ -69,6 +69,9 @@ export async function getPublicProfile(username: string): Promise<PublicProfile 
 
 export const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
+/** Usernames are unique case-insensitively (unique index on lower(username)). */
+export const USERNAME_TAKEN = 'This username is already taken. Please choose another one.';
+
 /** Describes what is wrong with a username, or null when the format is fine (availability is checked separately). */
 export function usernameProblem(name: string): string | null {
   if (name.length < 3) return 'Username must be at least 3 characters.';
@@ -111,7 +114,7 @@ export async function updateProfile(userId: string, patch: ProfilePatch): Promis
   }
   const { error } = await requireClient().from('profiles').update(patch).eq('id', userId);
   if (!error) return;
-  if (error.code === '23505') throw new Error('That username is taken.');
+  if (error.code === '23505') throw new Error(USERNAME_TAKEN); // profiles_username_lower: the database is the final check
   if (/rate limited/i.test(error.message)) throw new Error('You have changed your username too often today. Try again tomorrow.');
   throw error;
 }
@@ -155,24 +158,38 @@ export async function signUp(email: string, password: string, username: string) 
  * does not already know the password.
  */
 export class EmailNotConfirmedError extends Error {
-  constructor() {
+  /** the account's address, so a username sign-in can still offer to resend the confirmation */
+  constructor(readonly email = '') {
     super('Your email address is not confirmed yet. Open the link we emailed you, or send a new one.');
   }
 }
 
-/** `remember: false` keeps the session in this tab only (sessionStorage), for shared computers. */
-export async function signIn(email: string, password: string, remember = true) {
+export const SIGN_IN_FAILED = 'Incorrect email, username or password.';
+
+/**
+ * `login` is an email address or a username (usernames never contain "@"). A username is traded for the account's
+ * email by email_for_sign_in, which answers only when the password matches. `remember: false` keeps the session in
+ * this tab only (sessionStorage), for shared computers.
+ */
+export async function signIn(login: string, password: string, remember = true) {
+  let email = login.trim();
+  if (!email.includes('@')) {
+    const { data, error } = await requireClient().rpc('email_for_sign_in', { p_username: email, p_password: password });
+    if (error) throw /rate limited/i.test(error.message) ? new Error('Too many attempts. Please wait a few minutes and try again.') : error;
+    if (typeof data !== 'string' || !data) throw new Error(SIGN_IN_FAILED);
+    email = data;
+  }
   chooseSessionPersistence(remember); // applies only to the session this attempt creates, in this tab
   let error;
   try {
-    ({ error } = await requireClient().auth.signInWithPassword({ email: email.trim(), password }));
+    ({ error } = await requireClient().auth.signInWithPassword({ email, password }));
   } finally {
     chooseSessionPersistence(null);
   }
   if (!error) return setRememberSession(remember); // the checkbox default for next time; never set by a failed attempt
   if (error.status === 429) throw authError(error);
-  if (error.code === 'email_not_confirmed') throw new EmailNotConfirmedError();
-  throw new Error('Incorrect email or password.');
+  if (error.code === 'email_not_confirmed') throw new EmailNotConfirmedError(email);
+  throw new Error(SIGN_IN_FAILED);
 }
 
 /** Signs out of this browser. Local progress stays (namespaced to the account) unless the user removes it in Settings. */

@@ -46,7 +46,26 @@ describe('no account enumeration in the UI', () => {
   });
   it('sign-in failures use one generic message', async () => {
     h.next.signInWithPassword = { error: { message: 'Invalid login credentials', status: 400 } };
-    await expect(social.signIn('a@b.co', 'x')).rejects.toThrow(/Incorrect email or password/);
+    await expect(social.signIn('a@b.co', 'x')).rejects.toThrow('Incorrect email, username or password.');
+  });
+  it('a username is traded for the email (only with the right password), then signs in with that email', async () => {
+    h.next.rpc = { data: 'abbas@b.co', error: null };
+    await social.signIn('  Abbas ', 'Pw-123456');
+    expect(h.calls[0]).toEqual({ fn: 'rpc', args: ['email_for_sign_in', { p_username: 'Abbas', p_password: 'Pw-123456' }] });
+    expect(h.calls[1]).toEqual({ fn: 'signInWithPassword', args: [{ email: 'abbas@b.co', password: 'Pw-123456' }] });
+  });
+  it('an unknown username or wrong password gets the same generic message and never reaches GoTrue', async () => {
+    h.next.rpc = { data: null, error: null };
+    await expect(social.signIn('nobody', 'x')).rejects.toThrow('Incorrect email, username or password.');
+    expect(h.calls.map((c) => c.fn)).toEqual(['rpc']);
+  });
+  it('a rate-limited username sign-in says to wait', async () => {
+    h.next.rpc = { data: null, error: { message: 'rate limited: too many requests, try again later' } };
+    await expect(social.signIn('abbas', 'x')).rejects.toThrow(/Too many attempts/);
+  });
+  it('an email sign-in skips the username lookup', async () => {
+    await social.signIn('a@b.co', 'x');
+    expect(h.calls.map((c) => c.fn)).not.toContain('rpc');
   });
   it('a failed sign-in never changes the saved "keep me signed in" preference; a successful one does', async () => {
     h.next.signInWithPassword = { error: { message: 'Invalid login credentials', status: 400 } };

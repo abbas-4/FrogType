@@ -196,8 +196,21 @@ test('changing the password re-checks the current one and replaces it everywhere
   await signIn.getByLabel('Email').fill(u.email);
   await signIn.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await signIn.getByRole('button', { name: 'Sign in' }).click();
-  await expect(signIn.getByText('Incorrect email or password.')).toBeVisible();
+  await expect(signIn.getByText('Incorrect email, username or password.')).toBeVisible();
   await signInUI(page, u.email, next);
+});
+
+test('the username (any case) signs in with the same password; a wrong password gets the generic message', async ({ page }) => {
+  const u = await newUser();
+  await page.goto('/signin');
+  const signIn = page.getByRole('form', { name: 'Sign in' });
+  await signIn.getByLabel('Email or username').fill(u.username.toUpperCase());
+  await signIn.getByLabel('Password', { exact: true }).fill('Wrong-Passw0rd'); // gitleaks:allow (synthetic)
+  await signIn.getByRole('button', { name: 'Sign in' }).click();
+  await expect(signIn.getByText('Incorrect email, username or password.')).toBeVisible();
+  await signIn.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await signIn.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.locator('#account-menu')).toContainText(u.email);
 });
 
 test('changing the email needs both inboxes to confirm, then lands on Settings with a notice', async ({ page }) => {
@@ -228,7 +241,7 @@ test('changing the email needs both inboxes to confirm, then lands on Settings w
   await expect(page).toHaveURL(/\/settings/);
   await expect(page.getByText(`Your email address has been changed to ${next}.`)).toBeVisible();
   await expect.poll(email).toBe(next);
-  await expect(page.getByText(`Signed in as ${next}`)).toBeVisible();
+  await expect(page.getByText(`Current: ${next}`)).toBeVisible();
 });
 
 test('a revoked session signs out gracefully and keeps guest progress', async ({ page }) => {

@@ -80,7 +80,7 @@ describe('SignUpForm', () => {
     vi.mocked(checkUsername).mockResolvedValue('taken');
     const user = renderForm(<SignUpForm />);
     await fillSignUp(user, { email: 'a@frog.test', username: 'taken_name', password: GOOD_PW, confirm: GOOD_PW });
-    expect(await screen.findByText('That username is taken. Try another.')).toBeInTheDocument();
+    expect(await screen.findByText('This username is already taken. Please choose another one.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     expect(signUp).not.toHaveBeenCalled();
   });
@@ -92,7 +92,7 @@ describe('SignUpForm', () => {
     expect(await screen.findByText('✓ Username is available')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
-    expect(await screen.findByText('That username is taken. Try another.')).toBeInTheDocument();
+    expect(await screen.findByText('This username is already taken. Please choose another one.')).toBeInTheDocument();
     expect(checkUsername).toHaveBeenLastCalledWith('race_name');
     expect(signUp).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Username')).toHaveFocus();
@@ -118,7 +118,7 @@ describe('SignUpForm', () => {
 
 describe('SignInForm', () => {
   async function submit(user: ReturnType<typeof userEvent.setup>, email = 'me@frog.test', pw = GOOD_PW) {
-    await user.type(screen.getByLabelText('Email'), email);
+    await user.type(screen.getByLabelText('Email or username'), email);
     await user.type(screen.getByLabelText('Password'), pw);
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
   }
@@ -139,10 +139,10 @@ describe('SignInForm', () => {
   });
 
   it('shows the error for wrong credentials and no resend button', async () => {
-    vi.mocked(signIn).mockRejectedValue(new Error('Incorrect email or password.'));
+    vi.mocked(signIn).mockRejectedValue(new Error('Incorrect email, username or password.'));
     const user = renderForm(<SignInForm />);
     await submit(user);
-    expect(await screen.findByText('Incorrect email or password.')).toBeInTheDocument();
+    expect(await screen.findByText('Incorrect email, username or password.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Resend/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
   });
@@ -154,20 +154,34 @@ describe('SignInForm', () => {
     expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'new-password');
   });
 
-  it('fills the saved login into the email field and explains a username typed (or autofilled) there', async () => {
+  it('accepts a username (or a saved login) in the "Email or username" field', async () => {
     const user = renderForm(<SignInForm />);
-    expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'username');
-    await user.type(screen.getByLabelText('Email'), 'frog_fan');
-    await user.type(screen.getByLabelText('Password'), GOOD_PW);
-    await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(screen.getByText('Sign in with the email address you created your account with, not your username.')).toBeInTheDocument();
+    const login = screen.getByLabelText('Email or username');
+    expect(login).toHaveAttribute('autocomplete', 'username');
+    expect(login).toHaveAttribute('placeholder', 'Email or username');
+    await submit(user, ' Frog_Fan ');
+    expect(signIn).toHaveBeenCalledWith('Frog_Fan', GOOD_PW, true);
+  });
+
+  it('rejects something that is neither an email nor a valid username', async () => {
+    const user = renderForm(<SignInForm />);
+    await submit(user, 'not a name!');
+    expect(screen.getByText('Enter a valid email address or username.')).toBeInTheDocument();
     expect(signIn).not.toHaveBeenCalled();
   });
 
-  it('does not call signIn without an email and password', async () => {
+  it('offers to resend to the account email after an unconfirmed username sign-in', async () => {
+    vi.mocked(signIn).mockRejectedValue(new EmailNotConfirmedError('me@frog.test'));
+    const user = renderForm(<SignInForm />);
+    await submit(user, 'frog_fan');
+    await user.click(await screen.findByRole('button', { name: 'Resend confirmation email' }));
+    expect(resendConfirmation).toHaveBeenCalledWith('me@frog.test');
+  });
+
+  it('does not call signIn without a login and password', async () => {
     const user = renderForm(<SignInForm />);
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(screen.getByText('Enter your email address and password.')).toBeInTheDocument();
+    expect(screen.getByText('Enter your email or username and your password.')).toBeInTheDocument();
     expect(signIn).not.toHaveBeenCalled();
   });
 

@@ -35,7 +35,7 @@ test('a new account can sign out and back in repeatedly, in either tab, and stay
     if (i === 0) {
       await signIn.getByLabel('Password', { exact: true }).fill('Wrong-Passw0rd'); // gitleaks:allow (synthetic)
       await signIn.getByRole('button', { name: 'Sign in' }).click();
-      await expect(signIn.getByText('Incorrect email or password.')).toBeVisible();
+      await expect(signIn.getByText('Incorrect email, username or password.')).toBeVisible();
     }
     await signIn.getByLabel('Password', { exact: true }).fill(pw);
     await signIn.getByRole('button', { name: 'Sign in' }).click();
