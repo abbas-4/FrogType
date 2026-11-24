@@ -93,8 +93,16 @@ test('passing a lesson marks it complete and awards XP', async ({ page }) => {
   await page.goto('/lessons/home-1');
   const text = (await wordsOnScreen(page)).join(' ');
   await typeText(page, text, 80);
-  await expect(page.getByText(/Lesson passed/)).toBeVisible();
+  await expect(page.getByTestId('results')).toBeVisible();
+  // completion state lives in the lesson header; results carry the XP badge and no verdict box
+  await expect(page.getByText('· passed')).toBeVisible();
   await expect(page.getByText(/\+\d+ XP/)).toBeVisible();
+  await expect(page.getByText(/Lesson passed/)).toHaveCount(0);
+  // Next moves on to the following lesson with its own text
+  await page.getByRole('button', { name: 'Next test' }).click();
+  await expect(page).toHaveURL(/\/lessons\/home-2$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Right hand home');
+  expect((await wordsOnScreen(page)).join(' ')).not.toBe(text);
   await page.getByRole('link', { name: 'All lessons' }).click();
   await expect(page.getByRole('link', { name: /Left hand home/ }).getByLabel('Passed')).toBeVisible();
 });
