@@ -33,7 +33,7 @@ export default function AchievementsPage() {
         {achievements.map((a) => {
           const at = progress.achievements[a.id];
           return (
-            <li key={a.id} data-state={at ? 'unlocked' : 'locked'} className={`flex gap-3 rounded-xl border p-4 ${at ? 'border-brand/30 bg-surface' : 'border-transparent bg-surface/50'}`}>
+            <li key={a.id} data-state={at ? 'unlocked' : 'locked'} className={`flex gap-3 rounded-lg border p-4 ${at ? 'border-brand/30 bg-surface' : 'border-transparent bg-surface/50'}`}>
               <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg ${at ? 'bg-brand/10 text-text' : 'bg-surface-2/60 text-sub'}`}>
                 <AchievementIcon icon={a.icon} size={36} unlocked={!!at} />
               </span>

@@ -79,7 +79,7 @@ export function AccountMenu() {
         {name && <span className="hidden max-w-32 truncate text-text lg:inline">{name}</span>}
         <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      <div ref={panel} id="account-menu" hidden={!open} className="absolute top-full right-0 z-50 mt-2 w-60 rounded-xl border border-surface-2 bg-surface p-1.5 shadow-xl">
+      <div ref={panel} id="account-menu" hidden={!open} className="absolute top-full right-0 z-50 mt-2 w-60 rounded-lg border border-surface-2 bg-surface p-1.5">
         <div className="mb-1 border-b border-surface-2 px-3 pt-1 pb-2">
           <div className="truncate text-sm text-text">{name}</div>
           <div className="truncate text-xs text-sub">{auth.user.email}</div>

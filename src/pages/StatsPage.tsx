@@ -6,7 +6,7 @@ import { modeLabel } from '../domain/format';
 import { dailyActivity, filterRange, formatDuration, groupProgress, summarize, type Range } from '../domain/stats';
 import { useProgress } from '../state/store';
 
-const tooltipStyle = { background: 'var(--ft-surface)', border: '1px solid var(--ft-surface-2)', borderRadius: 8, color: 'var(--ft-text)' };
+const tooltipStyle = { background: 'var(--ft-surface)', border: 'none', borderRadius: 4, fontSize: 12, color: 'var(--ft-text)' };
 const axis = { stroke: 'var(--ft-sub)', tickLine: false, fontSize: 12 } as const;
 
 function ChartCard({ title, children, empty }: { title: string; children: React.ReactElement; empty?: boolean }) {

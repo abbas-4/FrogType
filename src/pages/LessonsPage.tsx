@@ -76,7 +76,7 @@ export default function LessonsPage() {
                       <Link
                         to={`/lessons/${l.id}`}
                         data-completed={p?.completed || undefined}
-                        className={`flex h-full flex-col rounded-xl p-4 transition-colors ${
+                        className={`flex h-full flex-col rounded-lg p-4 transition-colors ${
                           p?.completed ? 'bg-brand/10 ring-1 ring-inset ring-brand/50 hover:bg-brand/15' : 'bg-surface hover:bg-surface-2'
                         }`}
                       >

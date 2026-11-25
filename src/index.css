@@ -19,14 +19,14 @@
 
 :root,
 [data-theme="frog"] {
-  --ft-bg: #18181b;
-  --ft-surface: #27272a;
-  --ft-surface-2: #3f3f46;
-  --ft-brand: #22c55e;
-  --ft-brand-hover: #16a34a;
-  --ft-text: #fafafa;
-  --ft-sub: #a1a1aa;
-  --ft-error: #ef4444;
+  --ft-bg: #1e2329;
+  --ft-surface: #252a30;
+  --ft-surface-2: #323840;
+  --ft-brand: #50e050;
+  --ft-brand-hover: #3fc83f;
+  --ft-text: #eef0f0;
+  --ft-sub: #858e93;
+  --ft-error: #e5525e;
   color-scheme: dark;
 }
 
@@ -58,7 +58,7 @@ html,
 body {
   background: var(--ft-bg);
   color: var(--ft-text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Roboto Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   -webkit-font-smoothing: antialiased;
 }
 
