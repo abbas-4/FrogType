@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, ChevronRight, RotateCcw, Sparkles, Trophy } from 'lucide-react';
 import type { RecordOutcome } from '../domain/recordResult';
@@ -23,6 +23,14 @@ interface Props {
 
 export default function ResultsView({ result: r, outcome, onRestart, onNext, extra }: Props) {
   const xp = outcome?.xpAdded.reduce((a, t) => a + t.amount, 0) ?? 0;
+  // Focus lands on the actions group, not a button: stray keys after the last keystroke can't trigger anything,
+  // and the next Tab reaches Restart. Its outline is hidden inline because the unlayered global :focus-visible
+  // rule outranks Tailwind's outline-none.
+  const actions = useRef<HTMLDivElement>(null);
+  const hasRestart = !!onRestart;
+  useEffect(() => {
+    if (hasRestart) actions.current?.focus({ preventScroll: true });
+  }, [hasRestart]);
   return (
     <div className="mx-auto w-full max-w-5xl animate-fade-in" data-testid="results">
       {!r.valid && r.mode !== 'lesson' && (
@@ -75,17 +83,17 @@ export default function ResultsView({ result: r, outcome, onRestart, onNext, ext
       {extra && <div className="mt-4">{extra}</div>}
 
       {(onRestart || onNext) && (
-        <div className="mt-5 flex justify-center gap-4">
-          {onNext && (
-            <button type="button" onClick={onNext} autoFocus aria-label="Next test" className={action}>
-              <ChevronRight size={20} aria-hidden="true" />
-              <span className={tip} aria-hidden="true">Next test</span>
+        <div ref={actions} tabIndex={-1} role="group" aria-label="Result actions" className="mt-5 flex justify-center gap-4" style={{ outline: 'none' }}>
+          {onRestart && (
+            <button type="button" onClick={onRestart} aria-label="Restart test" className={action}>
+              <RotateCcw size={20} aria-hidden="true" />
+              <span className={tip} aria-hidden="true">Restart test</span>
             </button>
           )}
-          {onRestart && (
-            <button type="button" onClick={onRestart} aria-label="Repeat test" className={action}>
-              <RotateCcw size={20} aria-hidden="true" />
-              <span className={tip} aria-hidden="true">Repeat test</span>
+          {onNext && (
+            <button type="button" onClick={onNext} aria-label="Next test" className={action}>
+              <ChevronRight size={20} aria-hidden="true" />
+              <span className={tip} aria-hidden="true">Next test</span>
             </button>
           )}
           <Link to="/stats" aria-label="View statistics" className={action}>
@@ -93,6 +101,11 @@ export default function ResultsView({ result: r, outcome, onRestart, onNext, ext
             <span className={tip} aria-hidden="true">View statistics</span>
           </Link>
         </div>
+      )}
+      {onRestart && (
+        <p className="mt-1 text-center text-xs text-sub">
+          <kbd className="rounded bg-surface px-1.5 py-0.5">Tab</kbd> → <kbd className="rounded bg-surface px-1.5 py-0.5">Enter</kbd> to restart
+        </p>
       )}
     </div>
   );

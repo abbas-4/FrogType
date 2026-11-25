@@ -107,6 +107,19 @@ describe('typing engine', () => {
     expect(f.invalidReason).toBe('Test too short');
   });
 
+  it('never marks a completed test invalid for low accuracy', () => {
+    // every letter wrong, at a human pace over several seconds; ticks each second as the UI clock does, so samples are not idle
+    const s = run(initEngine(['abc', 'def', 'ghi'], { kind: 'words' }), [
+      ...typeWord('xyz', 0, 400), { type: 'tick', now: 1000 }, { type: 'space', now: 1300 },
+      ...typeWord('xyz', 1500, 200), { type: 'tick', now: 2000 }, { type: 'space', now: 2400 },
+      ...typeWord('xyz', 2600, 200), { type: 'tick', now: 3000 }, { type: 'space', now: 3400 },
+    ]);
+    const f = finalStats(s);
+    expect(f.accuracy).toBeLessThan(50);
+    expect(f.invalidReason).toBeUndefined();
+    expect(f.valid).toBe(true);
+  });
+
   it('live stats never divide by a tiny elapsed time', () => {
     const s = run(initEngine(['ab'], { kind: 'words' }), [{ type: 'char', char: 'a', now: 0 }]);
     expect(liveStats(s, 10).wpm).toBe(0);

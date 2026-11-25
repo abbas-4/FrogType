@@ -50,13 +50,42 @@ test('words mode completes, shows results and persists to statistics', async ({ 
   await expect(page.getByText('words 10')).toBeVisible();
 });
 
+test('a low-accuracy test shows full results, survives stray keys, saves, and restarts with Tab then Enter', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'words' }).click();
+  await page.getByRole('radio', { name: '10', exact: true }).click();
+  const words = await wordsOnScreen(page, 10);
+  await typeText(page, words.map((w) => 'q'.repeat(w.length)).join(' ') + ' ', 90);
+  const results = page.getByTestId('results');
+  await expect(results).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(Number.parseInt((await page.getByTestId('result-acc').textContent())!)).toBeLessThan(50);
+  await expect(results.getByText('consistency')).toBeVisible();
+
+  // keys typed out of momentum after the finish never trigger an action
+  await page.keyboard.type('asdf ', { delay: 30 });
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
+  await expect(results).toBeVisible();
+  await expect(page.getByText('Tab → Enter to restart')).toBeVisible();
+
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Restart test' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(results).toHaveCount(0);
+  expect(await wordsOnScreen(page, 10)).toEqual(words);
+
+  await page.goto('/stats');
+  await expect(page.locator('table tbody tr')).toHaveCount(1);
+});
+
 test('results icons repeat the same passage and start a new one', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'words' }).click();
   await page.getByRole('radio', { name: '10', exact: true }).click();
   const first = await wordsOnScreen(page, 10);
   await typeText(page, first.join(' '), 40);
-  await page.getByRole('button', { name: 'Repeat test' }).click();
+  await page.getByRole('button', { name: 'Restart test' }).click();
   expect(await wordsOnScreen(page, 10)).toEqual(first);
   await typeText(page, first.join(' '), 40);
   await page.getByRole('button', { name: 'Next test' }).click();

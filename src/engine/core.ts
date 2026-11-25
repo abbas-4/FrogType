@@ -254,12 +254,11 @@ export function finalStats(s: EngineState): FinalStats {
   return stats;
 }
 
-/** Guards against timer bugs, AFK and implausible runs. Invalid tests are shown but never saved to stats. */
-export function invalidReason(f: Pick<FinalStats, 'wpm' | 'raw' | 'accuracy' | 'durationMs'>, s: EngineState): string | undefined {
+/** Guards against timer bugs, AFK and implausible runs; never accuracy. Invalid tests are shown but never saved to stats. */
+export function invalidReason(f: Pick<FinalStats, 'wpm' | 'raw' | 'durationMs'>, s: EngineState): string | undefined {
   if (f.durationMs < 1000) return 'Test too short';
   if (s.keystrokes < 5) return 'Too few keystrokes';
   if (f.raw > 350 || f.wpm > 300) return 'Unrealistic speed';
-  if (f.accuracy < 50) return 'Accuracy below 50%';
   if (s.limit.kind === 'time' && Math.abs(f.durationMs - s.limit.seconds * 1000) > 1000) return 'Timer mismatch';
   const idle = s.samples.filter((x) => x.raw === 0).length;
   if (s.samples.length >= 5 && idle / s.samples.length > 0.5) return 'Inactive for most of the test';

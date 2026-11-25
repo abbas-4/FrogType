@@ -86,7 +86,7 @@ describe('lesson progression', { timeout: 20_000 }, () => {
   it('Repeat restarts the same lesson and never awards lesson XP twice', async () => {
     const user = setup('beginner-1');
     await finish(user, 'beginner-1');
-    await user.click(screen.getByRole('button', { name: 'Repeat test' }));
+    await user.click(screen.getByRole('button', { name: 'Restart test' }));
     expect(screen.getByRole('heading')).toHaveTextContent(lesson('beginner-1').title);
     expect(screen.getByTestId('progress')).toHaveTextContent('0/');
     await finish(user, 'beginner-1');

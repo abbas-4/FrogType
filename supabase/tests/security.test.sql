@@ -3,7 +3,13 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
-select plan(109);
+select plan(111);
+
+-- 20261127000000: a completed run is never invalid just for low accuracy (every letter wrong, human pace).
+select ok((public.ft_replay(array['abc', 'def', 'ghi'], 'words', 3, 'qqq qqq qqq ', array[0, 400, 800, 1300, 1500, 1700, 1900, 2400, 2600, 2800, 3000, 3400]) ->> 'accuracy')::numeric < 50,
+  'replay fixture is below 50% accuracy');
+select is(public.ft_replay(array['abc', 'def', 'ghi'], 'words', 3, 'qqq qqq qqq ', array[0, 400, 800, 1300, 1500, 1700, 1900, 2400, 2600, 2800, 3000, 3400]) -> 'valid', 'true'::jsonb,
+  'server replay treats a low-accuracy completed run as valid (no invalid:* flag)');
 
 -- Board and friendship assertions below count whole tables. Other local runs (integration and e2e tests) leave rows
 -- behind, and new accounts are public by default, so start from an empty slate; the rollback at the end restores them.

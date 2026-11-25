@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { TypingTest } from '../src/components/TypingTest';
 import { saveResult } from '../src/services/results';
+import { loadProgress } from '../src/persistence/storage';
+import { progressStore } from '../src/state/store';
 
 function setup(words: string[]) {
   const user = userEvent.setup();
@@ -64,5 +66,52 @@ describe('<TypingTest>', () => {
     const user = setup(['<b>x</b>']);
     await user.type(screen.getByTestId('typing-input'), '<b>');
     expect(document.querySelector('[data-testid="words"] b')).toBeNull();
+  });
+});
+
+describe('<TypingTest> results screen', { timeout: 20_000 }, () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // A below-50% run at a human pace: 8x test clock makes the 30ms typing delay read as ~240ms per key.
+  async function finishBadly() {
+    progressStore.set(loadProgress(null));
+    const start = Date.now();
+    vi.spyOn(performance, 'now').mockImplementation(() => (Date.now() - start) * 8);
+    const user = userEvent.setup({ delay: 30 });
+    render(
+      <MemoryRouter>
+        <TypingTest source={{ kind: 'fixed', words: ['abc', 'def', 'ghi', 'jkl'] }} sourceKey="t" meta={{ mode: 'custom', mode2: 4 }} onComplete={(r) => saveResult(r)} />
+      </MemoryRouter>,
+    );
+    await user.type(screen.getByTestId('typing-input'), 'xyz xyz xyz xyz ');
+    await screen.findByTestId('results');
+    return user;
+  }
+
+  it('shows full results for a test below 50% accuracy and saves it to history', async () => {
+    await finishBadly();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/Invalid test|Accuracy below/)).toBeNull();
+    expect(Number.parseInt(screen.getByTestId('result-acc').textContent!)).toBeLessThan(50);
+    for (const label of ['wpm', 'acc', 'raw', 'consistency', 'characters', 'time', 'words']) expect(screen.getByText(label)).toBeInTheDocument();
+    const history = progressStore.get().history;
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({ valid: true });
+    expect(history[0]!.accuracy).toBeLessThan(50);
+  });
+
+  it('stray keys after finishing never restart; Tab then Enter does', async () => {
+    const user = await finishBadly();
+    expect(document.activeElement?.tagName).not.toBe('BUTTON');
+    await user.keyboard('typing on {Enter} {Enter}x');
+    expect(screen.getByTestId('results')).toBeInTheDocument();
+    expect(screen.queryByTestId('typing-input')).toBeNull();
+
+    await user.keyboard('{Tab}');
+    expect(screen.getByRole('button', { name: 'Restart test' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByTestId('results')).toBeNull();
+    expect(screen.getByTestId('progress')).toHaveTextContent('0/4');
+    expect(progressStore.get().history).toHaveLength(1);
   });
 });

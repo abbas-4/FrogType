@@ -17,13 +17,40 @@ describe('<ResultsView> actions', () => {
         <ResultsView result={makeResult()} onNext={onNext} onRestart={onRestart} />
       </MemoryRouter>,
     );
-    const next = screen.getByRole('button', { name: 'Next test' });
-    expect(next).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Restart test' }));
+    expect(onRestart).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Next test' }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: 'View statistics' })).toHaveAttribute('href', '/stats');
+  });
+
+  it('focuses no button on mount; stray keys do nothing; Tab then Enter restarts; Next is a separate stop', async () => {
+    const user = userEvent.setup();
+    const onNext = vi.fn();
+    const onRestart = vi.fn();
+    render(
+      <MemoryRouter>
+        <ResultsView result={makeResult()} onNext={onNext} onRestart={onRestart} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('group', { name: 'Result actions' })).toHaveFocus();
+    expect(document.activeElement?.tagName).not.toBe('BUTTON');
+    await user.keyboard('asdf {Enter} {Enter}');
+    expect(onRestart).not.toHaveBeenCalled();
+    expect(onNext).not.toHaveBeenCalled();
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Tab → Enter to restart')).toBeInTheDocument();
+
+    await user.keyboard('{Tab}');
+    expect(screen.getByRole('button', { name: 'Restart test' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(onRestart).toHaveBeenCalledTimes(1);
+    expect(onNext).not.toHaveBeenCalled();
+
+    await user.keyboard('{Tab}');
+    expect(screen.getByRole('button', { name: 'Next test' })).toHaveFocus();
     await user.keyboard('{Enter}');
     expect(onNext).toHaveBeenCalledTimes(1);
-    await user.click(screen.getByRole('button', { name: 'Repeat test' }));
     expect(onRestart).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('link', { name: 'View statistics' })).toHaveAttribute('href', '/stats');
   });
 
   it('keeps every metric and shows no actions for a saved result', () => {
@@ -35,10 +62,11 @@ describe('<ResultsView> actions', () => {
     for (const label of ['wpm', 'acc', 'test type', 'raw', 'consistency', 'characters', 'time', 'words']) expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Next test' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'View statistics' })).toBeNull();
+    expect(screen.queryByText(/to restart/)).toBeNull();
   });
 
   it('shows the invalid-test notice for tests but not for lessons', () => {
-    const invalid = { valid: false, invalidReason: 'Accuracy below 50%' };
+    const invalid = { valid: false, invalidReason: 'Test too short' };
     const { unmount } = render(
       <MemoryRouter>
         <ResultsView result={makeResult(invalid)} />
@@ -53,6 +81,18 @@ describe('<ResultsView> actions', () => {
     );
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByText('raw')).toBeInTheDocument();
+  });
+
+  it('shows a low-accuracy result with every metric and no warning', () => {
+    render(
+      <MemoryRouter>
+        <ResultsView result={makeResult({ accuracy: 12, wpm: 3 })} onRestart={() => {}} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/Invalid test|Accuracy below/)).toBeNull();
+    expect(screen.getByTestId('result-acc')).toHaveTextContent('12%');
+    for (const label of ['wpm', 'acc', 'raw', 'consistency', 'characters', 'time', 'words']) expect(screen.getByText(label)).toBeInTheDocument();
   });
 
   it('hides test type only for lesson results', () => {
