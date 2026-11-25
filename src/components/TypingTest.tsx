@@ -28,6 +28,8 @@ interface Props {
   /** results "Next" action; defaults to a fresh test from the same source */
   onNext?: () => void;
   autoFocus?: boolean;
+  /** chrome centred above the words (e.g. language picker); hidden while typing */
+  toolbar?: ReactNode;
 }
 
 const fontStacks = {
@@ -36,7 +38,7 @@ const fontStacks = {
   serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
 };
 
-export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, onNext, autoFocus = true }: Props) {
+export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, onNext, autoFocus = true, toolbar }: Props) {
   const settings = useSettings();
   const t = useTypingTest(source, sourceKey);
   const { state, live, running, finished, challengeId, consumeChallenge } = t;
@@ -237,8 +239,10 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, o
   }[settings.caretStyle];
 
   return (
-    <div className="w-full">
-      <div className="mb-3 flex h-8 items-end gap-6 text-xl tabular-nums text-brand" aria-live="off">
+    // Centred block with left-aligned text flow inside (Monkeytype-style), capped so lines stay readable on wide screens.
+    <div className="mx-auto w-full max-w-6xl">
+      <div className="relative mb-3 flex h-8 items-end gap-6 text-xl tabular-nums text-brand" aria-live="off">
+        {toolbar && <div className="focus-hide absolute bottom-0 left-1/2 z-10 -translate-x-1/2 text-base">{toolbar}</div>}
         <span data-testid="progress">{progressLabel}</span>
         {settings.showLiveWpm && running && (
           <>

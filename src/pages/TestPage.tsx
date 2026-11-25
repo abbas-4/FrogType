@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ModeBar } from '../components/ModeBar';
+import { LanguagePicker, ModeBar } from '../components/ModeBar';
 import { TypingTest } from '../components/TypingTest';
 import type { WordSource } from '../hooks/useTypingTest';
 import { saveResult } from '../services/results';
@@ -39,7 +39,7 @@ export function TestPage() {
     <div className="flex min-h-[60vh] flex-col justify-center">
       <h1 className="sr-only">Typing test</h1>
       <ModeBar settings={settings} mode={mode} setMode={setMode} />
-      <TypingTest source={source} sourceKey={key} meta={meta} onComplete={onComplete} />
+      <TypingTest source={source} sourceKey={key} meta={meta} onComplete={onComplete} toolbar={<LanguagePicker language={settings.language} />} />
     </div>
   );
 }
