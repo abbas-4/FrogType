@@ -1,7 +1,68 @@
-import { useState } from 'react';
-import { AtSign, Clock, Hash, Type } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AtSign, Clock, Globe, Hash, Type } from 'lucide-react';
 import type { Settings } from '../types';
 import { updateSettings } from '../state/store';
+import { languages } from '../data/wordlists';
+import { Segmented } from './ui';
+
+/** Icon-only language switcher: name shows in a tooltip on hover/keyboard focus; click/tap opens the picker. */
+export function LanguagePicker({ language }: { language: Settings['language'] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const name = languages.find((l) => l.value === language)?.label ?? language;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative flex justify-center">
+      <button
+        type="button"
+        aria-label={`Language: ${name}`}
+        aria-expanded={open}
+        aria-controls="language-picker"
+        onClick={() => setOpen((o) => !o)}
+        className="peer rounded p-1.5 text-sub transition-colors hover:text-text"
+      >
+        <Globe size={16} aria-hidden="true" />
+      </button>
+      {!open && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-full mb-1 rounded bg-surface-2 px-2 py-1 text-xs whitespace-nowrap text-text opacity-0 transition-opacity peer-hover:opacity-100 peer-focus-visible:opacity-100"
+        >
+          {name}
+        </span>
+      )}
+      {open && (
+        <div id="language-picker" className="absolute top-full z-20 mt-1 rounded-lg bg-surface p-1 shadow-lg">
+          <Segmented
+            label="Language"
+            value={language}
+            options={languages}
+            onChange={(v) => {
+              updateSettings({ language: v });
+              setOpen(false);
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const TIMES = [15, 30, 60, 120];
 const WORDS = [10, 25, 50, 100];
