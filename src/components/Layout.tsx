@@ -64,8 +64,9 @@ export function Layout() {
     meta?.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--ft-bg').trim());
   }, [settings.theme, settings.reducedMotion]);
 
+  // 1664px = 1600px of content + sm:px-8 padding; every page shares this width.
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 sm:px-8">
+    <div className="mx-auto flex min-h-screen max-w-[1664px] flex-col px-4 sm:px-8">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:rounded focus:bg-brand focus:px-3 focus:py-1 focus:text-bg">
         Skip to content
       </a>

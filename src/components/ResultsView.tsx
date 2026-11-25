@@ -34,23 +34,23 @@ export default function ResultsView({ result: r, outcome, onRestart, onNext, ext
   }, [hasRestart]);
   const details = [r.language, r.punctuation && 'punctuation', r.numbers && 'numbers', r.difficulty !== 'normal' && r.difficulty].filter(Boolean).join(' ');
   return (
-    <div className="mx-auto w-full max-w-6xl animate-fade-in" data-testid="results">
+    <div className="w-full animate-fade-in" data-testid="results">
       {!r.valid && r.mode !== 'lesson' && (
         <p role="alert" className="mb-4 text-center text-sm text-error">
           Invalid test — {r.invalidReason}. It was not saved to your history.
         </p>
       )}
-      <div className="grid items-center gap-6 lg:grid-cols-[auto_1fr] lg:gap-10">
-        <div className="flex gap-12 lg:flex-col lg:gap-5">
+      <div className="grid items-center gap-6 lg:grid-cols-[auto_1fr] lg:gap-12">
+        <div className="flex gap-12 lg:flex-col lg:gap-6">
           <Stat big label="wpm" value={<span data-testid="result-wpm">{Math.round(r.wpm)}</span>} hint={`${r.wpm.toFixed(2)} wpm`} />
           <Stat big label="acc" value={<span data-testid="result-acc">{`${Math.floor(r.accuracy)}%`}</span>} hint={`${r.accuracy.toFixed(2)}%`} />
         </div>
-        <Suspense fallback={<div className="h-48 sm:h-56" />}>
+        <Suspense fallback={<div className="h-56 sm:h-64 lg:h-72 2xl:h-80" />}>
           <WpmChart samples={r.samples} />
         </Suspense>
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:flex lg:justify-between lg:gap-8">
+      <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:mt-10 lg:flex lg:justify-between lg:gap-10">
         {r.mode !== 'lesson' && (
           <Item label="test type" small value={<>{modeLabel(r)}<span className="block">{details}</span></>} />
         )}
@@ -116,8 +116,8 @@ export default function ResultsView({ result: r, outcome, onRestart, onNext, ext
 function Item({ label, value, hint, small = false }: { label: string; value: ReactNode; hint?: string; small?: boolean }) {
   return (
     <div title={hint}>
-      <dt className="text-sm text-sub sm:text-base">{label}</dt>
-      <dd className={`tabular-nums text-brand ${small ? 'text-sm leading-snug sm:text-base' : 'text-2xl leading-tight sm:text-3xl'}`}>{value}</dd>
+      <dt className="text-sm text-sub sm:text-base lg:text-xl">{label}</dt>
+      <dd className={`tabular-nums text-brand ${small ? 'text-sm leading-snug sm:text-base lg:text-lg' : 'text-2xl leading-tight sm:text-3xl lg:text-4xl'}`}>{value}</dd>
     </div>
   );
 }
