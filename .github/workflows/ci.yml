@@ -62,6 +62,15 @@ jobs:
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
           version: 3.2.0
+      # supabase/config.toml publishes host ports 55320-55329, which sit inside Linux's ephemeral range
+      # (32768-60999). Docker's parallel image pulls open many outbound sockets on random ephemeral ports,
+      # and one landing on e.g. 55322 makes the container's host-port bind fail with "address already in use".
+      # Reserving the range stops the kernel from auto-assigning it; explicit binds still work.
+      # Keep this range in sync with the ports in supabase/config.toml.
+      - name: Reserve Supabase host ports from the ephemeral range
+        run: |
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports=55320-55329
+          sysctl net.ipv4.ip_local_port_range
       - name: Start isolated local Supabase (synthetic data only)
         run: supabase start
       # The local stack's keys are Supabase's fixed, publicly documented demo values for an ephemeral container,

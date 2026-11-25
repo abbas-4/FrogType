@@ -1,8 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { TypingTest } from '../components/TypingTest';
-import { Notice } from '../components/ui';
 import { getLesson, lessons } from '../domain/lessons';
 import { saveResult } from '../services/results';
 import { useProgress } from '../state/store';
@@ -50,24 +49,6 @@ export default function LessonPlayerPage() {
         meta={meta}
         onComplete={onComplete}
         onNext={() => navigate(nextPath)}
-        resultExtra={(r) => {
-          const passed = r.valid && r.wpm >= lesson.targetWpm && r.accuracy >= lesson.targetAccuracy;
-          return (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {!passed && (
-                <Notice tone="warn">
-                  Not yet: {r.wpm < lesson.targetWpm ? `speed ${Math.round(r.wpm)}/${lesson.targetWpm} wpm` : ''}
-                  {r.wpm < lesson.targetWpm && r.accuracy < lesson.targetAccuracy ? ', ' : ''}
-                  {r.accuracy < lesson.targetAccuracy ? `accuracy ${Math.floor(r.accuracy)}/${lesson.targetAccuracy}%` : ''}
-                  {!r.valid ? r.invalidReason : ''}
-                </Notice>
-              )}
-              <Link to={nextPath} className="ml-auto inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                {next ? `Next: ${next.title}` : 'All lessons'} <ArrowRight size={16} />
-              </Link>
-            </div>
-          );
-        }}
       />
     </div>
   );
