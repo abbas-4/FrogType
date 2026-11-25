@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Medal, Pencil } from 'lucide-react';
+import { BarChart3, ChevronRight, Eye, EyeOff, Medal, Pencil, Trophy } from 'lucide-react';
+import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts';
 import { AchievementIcon } from '../components/AchievementIcon';
 import { Avatar } from '../components/Avatar';
 import { ProfileEditor } from '../components/ProfileEditor';
@@ -8,15 +9,14 @@ import { ResendButton } from '../components/AuthForm';
 import { Field } from '../components/forms';
 import { Button, Card, Notice, Stat } from '../components/ui';
 import { achievements } from '../domain/achievements';
-import { modeLabel } from '../domain/format';
 import { levelFromXp, totalXp } from '../domain/progression';
-import { summarize } from '../domain/stats';
+import { formatDuration, summarize, type Summary } from '../domain/stats';
 import { useAuth } from '../state/auth';
 import { useProgress } from '../state/store';
 import { pushToast } from '../state/toasts';
 import { isSupabaseConfigured, landingAuth } from '../services/supabase';
 import { getDecision, offerMigrationAgain, syncNow, useSync } from '../services/sync';
-import type { Progress } from '../types';
+import type { Progress, TestResult } from '../types';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -124,8 +124,8 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <EarnedAchievements unlocked={progress.achievements} />
-        <RecentActivity history={progress.history} />
+        <AchievementsPreview unlocked={progress.achievements} />
+        <StatsPreview s={s} valid={valid} />
       </div>
 
       {auth.user && <SyncPanel userId={auth.user.id} pending={progress.pendingSync.length} />}
@@ -215,71 +215,81 @@ function UsernameFallbackNotice({ wanted, actual, onChoose }: { wanted?: unknown
   );
 }
 
-function EarnedAchievements({ unlocked }: { unlocked: Progress['achievements'] }) {
-  const earned = achievements.filter((a) => unlocked[a.id]).sort((a, b) => unlocked[b.id]!.localeCompare(unlocked[a.id]!));
+/** Shared shell for the two dashboard previews: the whole card is one link (stretched over the card), so nothing inside it is interactive. */
+function PreviewCard({ to, icon, title, count, linkLabel, children }: { to: string; icon: ReactNode; title: string; count?: ReactNode; linkLabel: string; children: ReactNode }) {
   return (
-    <Card>
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h2 className="text-lg font-medium text-text">Achievements</h2>
-        <Link to="/achievements" className="text-sm text-sub hover:text-text">
-          See all {achievements.length}
-        </Link>
+    <Card className="group relative flex flex-col border border-brand/30 transition-colors hover:border-brand/70 hover:bg-surface/80 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-brand">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="text-brand" aria-hidden="true">{icon}</span>
+        <h2 className="flex-1 text-lg font-medium text-text">{title}</h2>
+        {count && <span className="text-sm text-sub tabular-nums">{count}</span>}
+        <ChevronRight size={18} aria-hidden="true" className="text-sub transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
       </div>
-      {earned.length === 0 ? (
-        <p className="text-sm text-sub">None yet. Finish your first test to earn one.</p>
-      ) : (
-        <ul className="space-y-2" aria-label="Earned achievements">
-          {earned.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 text-sm">
-              <span className="text-brand">
-                <AchievementIcon icon={a.icon} size={20} />
-              </span>
-              <span className="flex-1 text-text">{a.title}</span>
-              <span className="text-xs text-sub">{day(unlocked[a.id]!)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="flex-1">{children}</div>
+      <Link
+        to={to}
+        className="mt-4 inline-flex items-center justify-center gap-1 rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text outline-none after:absolute after:inset-0 after:rounded-xl group-hover:text-brand"
+      >
+        {linkLabel} <ChevronRight size={14} aria-hidden="true" />
+      </Link>
     </Card>
   );
 }
 
-function RecentActivity({ history }: { history: Progress['history'] }) {
-  const recent = history
-    .filter((t) => t.valid)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 8);
+const PREVIEW_ACHIEVEMENTS = 3;
+
+function AchievementsPreview({ unlocked }: { unlocked: Progress['achievements'] }) {
+  const earned = achievements.filter((a) => unlocked[a.id]).sort((a, b) => unlocked[b.id]!.localeCompare(unlocked[a.id]!));
   return (
-    <Card>
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h2 className="text-lg font-medium text-text">Recent activity</h2>
-        <Link to="/stats" className="text-sm text-sub hover:text-text">
-          All statistics
-        </Link>
+    <PreviewCard to="/achievements" icon={<Trophy size={22} />} title="Achievements" count={`${earned.length} of ${achievements.length}`} linkLabel={`See all ${achievements.length}`}>
+      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+        <div className="h-full bg-brand" style={{ width: `${(earned.length / achievements.length) * 100}%` }} />
       </div>
-      {recent.length === 0 ? (
-        <p className="text-sm text-sub">
-          No tests yet.{' '}
-          <Link to="/" className="text-brand underline">
-            Take your first test
-          </Link>
-          .
-        </p>
+      {earned.length === 0 ? (
+        <p className="text-sm text-sub">None yet. Finish your first test to earn one.</p>
       ) : (
-        <ul className="divide-y divide-surface-2" aria-label="Recent tests">
-          {recent.map((t) => (
-            <li key={t.id}>
-              <Link to={`/history/${t.id}`} className="flex items-center gap-3 py-2 text-sm hover:text-brand">
-                <span className="w-24 shrink-0 text-xs text-sub">{day(t.createdAt)}</span>
-                <span className="flex-1 truncate text-sub">{modeLabel(t)}</span>
-                <span className="w-16 text-right text-text tabular-nums">{Math.round(t.wpm)} wpm</span>
-                <span className="w-12 text-right text-sub tabular-nums">{Math.floor(t.accuracy)}%</span>
-              </Link>
+        <ul className="divide-y divide-surface-2" aria-label="Latest achievements">
+          {earned.slice(0, PREVIEW_ACHIEVEMENTS).map((a) => (
+            <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10">
+                <AchievementIcon icon={a.icon} size={24} unlocked />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-text">{a.title}</span>
+              <span className="shrink-0 text-xs text-sub">{day(unlocked[a.id]!)}</span>
             </li>
           ))}
         </ul>
       )}
-    </Card>
+    </PreviewCard>
+  );
+}
+
+const PREVIEW_TESTS = 20;
+
+/** Avg wpm, time and words aren't in the stat row above, so the preview shows those plus a recent-wpm sparkline. */
+function StatsPreview({ s, valid }: { s: Summary; valid: TestResult[] }) {
+  const series = valid.slice(-PREVIEW_TESTS).map((t, i) => ({ n: i + 1, wpm: Math.round(t.wpm) }));
+  return (
+    <PreviewCard to="/stats" icon={<BarChart3 size={22} />} title="Statistics" count="All time" linkLabel="All statistics">
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="avg wpm" value={s.avgWpm.toFixed(1)} />
+        <Stat label="typing time" value={formatDuration(s.totalMs)} />
+        <Stat label="words" value={s.totalWords} />
+      </div>
+      <h3 className="mt-4 mb-1 text-xs uppercase tracking-wider text-sub">WPM, last {Math.min(valid.length, PREVIEW_TESTS)} tests</h3>
+      {series.length < 2 ? (
+        <p className="py-6 text-center text-sm text-sub">Finish a couple of tests to see your trend.</p>
+      ) : (
+        <div className="h-24" role="img" aria-label={`WPM over your last ${series.length} tests`}>
+          <ResponsiveContainer>
+            <LineChart data={series} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+              <YAxis hide domain={['dataMin - 5', 'dataMax + 5']} />
+              <Line dataKey="wpm" stroke="var(--ft-brand)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </PreviewCard>
   );
 }
 
