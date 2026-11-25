@@ -11,9 +11,7 @@ const pages = [
   ['Test', '/'],
   ['Practice', '/practice'],
   ['Lessons', '/lessons'],
-  ['Statistics', '/stats'],
   ['Leaderboards', '/leaderboards'],
-  ['Achievements', '/achievements'],
   ['Profile', '/profile'],
   ['Settings', '/settings'],
 ] as const;
@@ -32,15 +30,17 @@ function renderAt(path: string) {
 }
 
 describe('main navigation', () => {
-  it('has an icon link with a tooltip for each of the eight pages, and marks the active one', () => {
-    renderAt('/stats');
+  it('has an icon link with a tooltip for each of the six main pages, and marks the active one', () => {
+    renderAt('/lessons');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     for (const [name, href] of pages) {
       const link = within(nav).getByRole('link', { name });
       expect(link).toHaveAttribute('href', href);
       expect(link).toHaveTextContent(name); // tooltip text
     }
-    expect(within(nav).getByRole('link', { name: 'Statistics' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).queryByRole('link', { name: 'Statistics' })).toBeNull(); // reached from the profile page
+    expect(within(nav).queryByRole('link', { name: 'Achievements' })).toBeNull();
+    expect(within(nav).getByRole('link', { name: 'Lessons' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Test' })).not.toHaveAttribute('aria-current');
   });
 
@@ -57,7 +57,7 @@ describe('main navigation', () => {
     await user.click(button);
     expect(button).toHaveAttribute('aria-expanded', 'true');
     const menu = screen.getByRole('navigation', { name: 'Main menu' });
-    expect(within(menu).getAllByRole('link')).toHaveLength(8);
+    expect(within(menu).getAllByRole('link')).toHaveLength(6);
 
     await user.keyboard('{Escape}');
     expect(button).toHaveAttribute('aria-expanded', 'false');
@@ -91,5 +91,35 @@ describe('achievement icons', () => {
     expect(locked.dataset.state).toBe('locked');
     expect(locked).toHaveTextContent('Locked');
     expect(locked.querySelector('svg g')).not.toHaveClass('text-brand');
+  });
+});
+
+describe('profile previews', () => {
+  it('show the latest achievements and all-time stats, and link to the full pages', async () => {
+    const { default: ProfilePage } = await import('../src/pages/ProfilePage');
+    const { makeResult } = await import('./fixtures');
+    progressStore.set(
+      (p) => ({
+        ...p,
+        achievements: { 'first-test': '2026-11-01T00:00:00.000Z', 'tests-10': '2026-11-03T00:00:00.000Z', 'first-lesson': '2026-11-02T00:00:00.000Z', 'wpm-50': '2026-11-04T00:00:00.000Z' },
+        history: [makeResult({ wpm: 40, durationMs: 30000, wordsTyped: 25 }), makeResult({ wpm: 60, durationMs: 30000, wordsTyped: 30 })],
+      }),
+      false,
+    );
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: `See all ${achievements.length}` })).toHaveAttribute('href', '/achievements');
+    expect(screen.getByText(`4 of ${achievements.length}`)).toBeInTheDocument();
+    const latest = within(screen.getByRole('list', { name: 'Latest achievements' })).getAllByRole('listitem');
+    expect(latest).toHaveLength(3); // preview only, newest first
+    expect(latest[0]).toHaveTextContent(achievements.find((a) => a.id === 'wpm-50')!.title);
+
+    expect(screen.getByRole('link', { name: 'All statistics' })).toHaveAttribute('href', '/stats');
+    expect(screen.getByText('50.0')).toBeInTheDocument(); // avg wpm
+    expect(screen.getByText('55')).toBeInTheDocument(); // words typed
+    expect(screen.queryByText('Recent activity')).toBeNull();
   });
 });

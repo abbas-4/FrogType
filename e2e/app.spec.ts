@@ -152,9 +152,16 @@ test('online features explain they need configuration instead of faking data', a
 
 test('keyboard users can reach every page', async ({ page }) => {
   await page.goto('/');
-  for (const name of ['Practice', 'Lessons', 'Statistics', 'Leaderboards', 'Achievements', 'Profile', 'Settings']) {
+  for (const name of ['Practice', 'Lessons', 'Leaderboards', 'Profile', 'Settings']) {
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name }).focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  }
+  // Statistics and Achievements live behind the profile page's preview cards.
+  for (const [link, heading] of [['All statistics', 'Statistics'], [/^See all \d+$/, 'Achievements']] as const) {
+    await page.goto('/profile');
+    await page.getByRole('link', { name: link }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
   }
 });
