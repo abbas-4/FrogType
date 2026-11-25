@@ -82,7 +82,7 @@ export function Layout() {
                   end={end}
                   aria-label={label}
                   className={({ isActive }) =>
-                    `group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-brand/10 text-brand' : 'text-sub hover:bg-brand/5 hover:text-brand'}`
+                    `group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${isActive ? 'text-brand' : 'text-sub hover:text-text'}`
                   }
                 >
                   {({ isActive }) => (
@@ -92,7 +92,7 @@ export function Layout() {
                       {/* Visual tooltip only; the link's accessible name is aria-label. Escape hides it (WCAG 1.4.13). */}
                       <span
                         aria-hidden="true"
-                        className={`pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs font-medium whitespace-nowrap text-zinc-50 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-hover:delay-200 group-focus-visible:opacity-100 ${tipsHidden ? 'hidden' : ''}`}
+                        className={`pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-md bg-surface px-2 py-1 text-xs whitespace-nowrap text-text opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:delay-200 group-focus-visible:opacity-100 ${tipsHidden ? 'hidden' : ''}`}
                       >
                         {label}
                       </span>
@@ -124,7 +124,7 @@ export function Layout() {
         <div
           ref={menuPanel}
           id="mobile-menu"
-          className={`absolute inset-x-0 top-full z-40 rounded-xl border border-surface-2 bg-surface p-2 shadow-xl transition duration-150 md:hidden ${menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-1 opacity-0'}`}
+          className={`absolute inset-x-0 top-full z-40 rounded-lg border border-surface-2 bg-surface p-2 transition duration-150 md:hidden ${menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-1 opacity-0'}`}
         >
           {auth.user ? (
             <NavLink to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-brand/5">
@@ -185,7 +185,7 @@ export function Layout() {
       </header>
 
       {auth.sessionEnded && (
-        <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-2 bg-surface px-4 py-3 text-sm">
+        <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-2 bg-surface px-4 py-3 text-sm">
           <p className="text-sub">
             <span className="text-text">You've been signed out.</span> Your session expired or you signed out in another window. Your synced progress is safe; tests you
             take now are saved in this browser as a guest.
@@ -204,7 +204,7 @@ export function Layout() {
       )}
 
       {sync.migrationOffer !== null && (
-        <div role="dialog" aria-labelledby="migrate-title" className="mb-4 rounded-xl border border-brand/40 bg-surface p-4">
+        <div role="dialog" aria-labelledby="migrate-title" className="mb-4 rounded-lg border border-brand/40 bg-surface p-4">
           <h2 id="migrate-title" className="font-medium text-text">Import this browser's guest progress into your account?</h2>
           <p className="mt-1 text-sm text-sub">
             {sync.migrationOffer} test{sync.migrationOffer === 1 ? ' was' : 's were'} recorded here while signed out. Only accept if they are yours: they move into this
@@ -247,7 +247,7 @@ export function Layout() {
 
       <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col gap-2" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className="animate-fade-in rounded-lg border border-brand/30 bg-surface px-4 py-3 shadow-lg">
+          <div key={t.id} className="animate-fade-in rounded-lg border border-brand/30 bg-surface px-4 py-3">
             <div className="text-sm font-medium text-brand">{t.title}</div>
             {t.body && <div className="text-sm text-text">{t.body}</div>}
           </div>

@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-xl bg-surface p-5 ${className}`}>{children}</section>;
+  return <section className={`rounded-lg bg-surface p-5 ${className}`}>{children}</section>;
 }
 
 export function Stat({ label, value, hint, big = false }: { label: string; value: ReactNode; hint?: string; big?: boolean }) {
   return (
     <div title={hint}>
-      <div className={big ? 'text-sm text-sub' : 'text-xs uppercase tracking-wider text-sub'}>{label}</div>
-      <div className={`${big ? 'text-6xl font-bold leading-tight' : 'text-2xl font-semibold'} tabular-nums text-brand`}>{value}</div>
+      <div className={big ? 'text-2xl leading-none text-sub sm:text-3xl' : 'text-xs tracking-wide text-sub'}>{label}</div>
+      <div className={`${big ? 'text-6xl leading-tight sm:text-7xl' : 'text-2xl'} tabular-nums text-brand`}>{value}</div>
     </div>
   );
 }

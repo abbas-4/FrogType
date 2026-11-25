@@ -177,7 +177,7 @@ function ConfirmationLanding() {
   if (!fresh) return null;
   if (landingAuth.error)
     return (
-      <div className="space-y-3 rounded-xl border border-error/40 p-4" data-testid="confirm-invalid">
+      <div className="space-y-3 rounded-lg border border-error/40 p-4" data-testid="confirm-invalid">
         <p className="text-sm text-error">This confirmation link is invalid or has expired. Links work once. Enter your email to get a new one.</p>
         <div className="max-w-sm">
           <Field label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -189,7 +189,7 @@ function ConfirmationLanding() {
   if (auth.user) return <Notice>Your email address is confirmed and you're signed in. Welcome to FrogType!</Notice>;
   if (auth.ready && gaveUp)
     return (
-      <div className="rounded-xl border border-surface-2 p-4 text-sm text-sub" data-testid="confirm-other-browser">
+      <div className="rounded-lg border border-surface-2 p-4 text-sm text-sub" data-testid="confirm-other-browser">
         Your email address is confirmed. We couldn't sign you in automatically because the link was opened in a different browser from the one you signed up in.{' '}
         <Link to="/signin" className="text-brand underline">
           Sign in to continue
@@ -204,7 +204,7 @@ function ConfirmationLanding() {
 function UsernameFallbackNotice({ wanted, actual, onChoose }: { wanted?: unknown; actual: string; onChoose: () => void }) {
   if (typeof wanted !== 'string' || wanted === actual || !/^frog_[0-9a-f]{8}$/.test(actual)) return null;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-2 p-4 text-sm text-sub">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-2 p-4 text-sm text-sub">
       <p>
         The username “{wanted}” was taken just before your account was created, so you're “{actual}” for now.
       </p>
@@ -228,7 +228,7 @@ function PreviewCard({ to, icon, title, count, linkLabel, children }: { to: stri
       <div className="flex-1">{children}</div>
       <Link
         to={to}
-        className="mt-4 inline-flex items-center justify-center gap-1 rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text outline-none after:absolute after:inset-0 after:rounded-xl group-hover:text-brand"
+        className="mt-4 inline-flex items-center justify-center gap-1 rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text outline-none after:absolute after:inset-0 after:rounded-lg group-hover:text-brand"
       >
         {linkLabel} <ChevronRight size={14} aria-hidden="true" />
       </Link>
