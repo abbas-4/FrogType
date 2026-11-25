@@ -1,7 +1,7 @@
 import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { Sample } from '../types';
 
-const tick = { fill: 'var(--ft-sub)', fontSize: 12 };
+const tick = { fill: 'var(--ft-sub)', fontSize: 13 };
 const axisLabel = { fill: 'var(--ft-sub)', fontSize: 11, style: { textAnchor: 'middle' } } as const;
 const tooltipStyle = { background: 'color-mix(in srgb, var(--ft-bg) 55%, black)', border: 'none', borderRadius: 4, padding: '6px 10px', fontSize: 12, color: 'var(--ft-text)' };
 
@@ -15,7 +15,7 @@ export default function WpmChart({ samples }: { samples: Sample[] }) {
   if (samples.length < 2) return <p className="py-8 text-center text-sm text-sub">Not enough data for a chart.</p>;
   const data = samples.map((s) => ({ ...s, errorsDot: s.errors > 0 ? s.errors : null }));
   return (
-    <div className="h-48 w-full sm:h-56" role="img" aria-label="Words per minute over time">
+    <div className="h-56 w-full sm:h-64 lg:h-72 2xl:h-80" role="img" aria-label="Words per minute over time">
       <ResponsiveContainer>
         <ComposedChart data={data} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="var(--ft-surface-2)" strokeOpacity={0.6} />
@@ -52,7 +52,7 @@ export default function WpmChart({ samples }: { samples: Sample[] }) {
             align="right"
             verticalAlign="bottom"
             iconSize={10}
-            wrapperStyle={{ fontSize: 12 }}
+            wrapperStyle={{ fontSize: 13 }}
             formatter={(value) => <span style={{ color: 'var(--ft-sub)' }}>{value}</span>}
           />
           <Area

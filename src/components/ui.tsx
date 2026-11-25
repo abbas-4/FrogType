@@ -7,8 +7,8 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
 export function Stat({ label, value, hint, big = false }: { label: string; value: ReactNode; hint?: string; big?: boolean }) {
   return (
     <div title={hint}>
-      <div className={big ? 'text-2xl leading-none text-sub sm:text-3xl' : 'text-xs tracking-wide text-sub'}>{label}</div>
-      <div className={`${big ? 'text-6xl leading-tight sm:text-7xl' : 'text-2xl'} tabular-nums text-brand`}>{value}</div>
+      <div className={big ? 'text-2xl leading-none text-sub sm:text-3xl xl:text-4xl' : 'text-xs tracking-wide text-sub'}>{label}</div>
+      <div className={`${big ? 'text-6xl leading-tight sm:text-7xl xl:text-8xl' : 'text-2xl'} tabular-nums text-brand`}>{value}</div>
     </div>
   );
 }
