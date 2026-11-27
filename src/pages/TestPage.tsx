@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { LanguagePicker, ModeBar } from '../components/ModeBar';
+import { CustomText } from '../components/CustomText';
+import { LanguagePicker, ModeBar, type BarMode } from '../components/ModeBar';
 import { TypingTest } from '../components/TypingTest';
 import type { WordSource } from '../hooks/useTypingTest';
 import { saveResult } from '../services/results';
@@ -11,8 +12,12 @@ const RANKED: Record<'time' | 'words', number[]> = { time: [15, 30, 60, 120], wo
 
 export function TestPage() {
   const settings = useSettings();
-  const [mode, setMode] = useState<'time' | 'words'>(settings.defaultMode);
-  const mode2 = mode === 'time' ? settings.timeDuration : settings.wordCount;
+  const [mode, setMode] = useState<BarMode>(settings.defaultMode);
+  // custom: the passage picked in <CustomText>; null shows the picker. customRun restarts the test for each pick.
+  const [customWords, setCustomWords] = useState<string[] | null>(null);
+  const [customRun, setCustomRun] = useState(0);
+  // zen has no length; 1 keeps it inside the stored mode2 range (1..2000)
+  const mode2 = mode === 'time' ? settings.timeDuration : mode === 'words' ? settings.wordCount : mode === 'custom' ? (customWords?.length ?? 1) : 1;
   const options = useMemo(
     () => ({ language: settings.language, difficulty: settings.difficulty, punctuation: settings.punctuation, numbers: settings.numbers }),
     [settings.language, settings.difficulty, settings.punctuation, settings.numbers],
@@ -20,26 +25,40 @@ export function TestPage() {
   const signedIn = useAuth().user !== null;
   // FT-01: only the standard English board configuration can rank, and only with a server-issued passage
   const ranked =
-    signedIn && options.language === 'english' && options.difficulty === 'normal' && !options.punctuation && !options.numbers && RANKED[mode].includes(mode2);
+    (mode === 'time' || mode === 'words') && signedIn && options.language === 'english' && options.difficulty === 'normal' && !options.punctuation && !options.numbers && RANKED[mode].includes(mode2);
   const source = useMemo<WordSource>(
-    () => ({
-      kind: 'generated',
-      options,
-      limit: mode === 'time' ? { kind: 'time', seconds: mode2 } : { kind: 'words' },
-      count: mode2,
-      challenge: ranked ? () => issueChallenge(mode, mode2).catch(() => null) : undefined,
-    }),
-    [options, mode, mode2, ranked],
+    () =>
+      mode === 'zen'
+        ? { kind: 'zen' }
+        : mode === 'custom'
+          ? { kind: 'fixed', words: customWords ?? [] }
+          : {
+              kind: 'generated',
+              options,
+              limit: mode === 'time' ? { kind: 'time', seconds: mode2 } : { kind: 'words' },
+              count: mode2,
+              challenge: ranked ? () => issueChallenge(mode, mode2).catch(() => null) : undefined,
+            },
+    [options, mode, mode2, ranked, customWords],
   );
-  const key = `${mode}-${mode2}-${options.language}-${options.difficulty}-${options.punctuation}-${options.numbers}-${ranked}`;
+  const key = `${mode}-${mode2}-${options.language}-${options.difficulty}-${options.punctuation}-${options.numbers}-${ranked}-${customRun}`;
   const meta = useMemo(() => ({ mode, mode2 }), [mode, mode2]);
   const onComplete = useCallback((r: Parameters<typeof saveResult>[0]) => saveResult(r), []);
 
   return (
     <div className="flex min-h-[60vh] flex-col justify-center">
       <h1 className="sr-only">Typing test</h1>
-      <ModeBar settings={settings} mode={mode} setMode={setMode} />
-      <TypingTest source={source} sourceKey={key} meta={meta} onComplete={onComplete} toolbar={<LanguagePicker language={settings.language} />} />
+      <ModeBar settings={settings} mode={mode} setMode={setMode} onEditCustom={customWords ? () => setCustomWords(null) : undefined} />
+      {mode === 'custom' && !customWords ? (
+        <CustomText
+          onStart={(words) => {
+            setCustomWords(words);
+            setCustomRun((n) => n + 1);
+          }}
+        />
+      ) : (
+        <TypingTest source={source} sourceKey={key} meta={meta} onComplete={onComplete} toolbar={<LanguagePicker language={settings.language} />} />
+      )}
     </div>
   );
 }

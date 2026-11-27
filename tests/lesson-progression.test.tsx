@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import LessonPlayerPage from '../src/pages/LessonPlayerPage';
 import LessonsPage from '../src/pages/LessonsPage';
-import { getLesson, lessons } from '../src/domain/lessons';
+import { categories, getLesson, lessons } from '../src/domain/lessons';
 import { loadProgress } from '../src/persistence/storage';
 import { progressStore } from '../src/state/store';
 
@@ -123,5 +123,33 @@ describe('lesson progression', { timeout: 20_000 }, () => {
       if (doneIds.includes(l.id)) expect(card).toHaveAttribute('data-completed', 'true');
       else expect(card).not.toHaveAttribute('data-completed');
     }
+  });
+});
+
+describe('lesson player chrome and editing', { timeout: 30_000 }, () => {
+  // one lesson from every category, so the shared player is exercised across lesson types
+  const sample = categories.map((c) => lessons.find((l) => l.category === c.id)!);
+
+  it.each(sample.map((l) => [l.id]))('%s: centred info hides while typing, Backspace deletes a space, restart shows it again', async (id) => {
+    const user = setup(id);
+    const header = screen.getByRole('heading', { level: 1 }).closest('header')!;
+    expect(header).toHaveClass('focus-hide', 'text-center');
+    expect(header).toHaveTextContent(`Pass: ${lesson(id).targetWpm} wpm at ${lesson(id).targetAccuracy}% accuracy`);
+    expect(document.documentElement.dataset.typing).toBeUndefined();
+
+    const words = lesson(id).text.split(' ');
+    const input = screen.getByTestId('typing-input');
+    await user.type(input, `${words[0]} `);
+    expect(document.documentElement.dataset.typing).toBe(''); // focus mode: .focus-hide (the header) fades out
+    expect(screen.getByTestId('progress')).toHaveTextContent(`1/${words.length}`);
+
+    await user.keyboard('{Backspace}');
+    expect(screen.getByTestId('progress')).toHaveTextContent(`0/${words.length}`); // the space is gone
+    await user.keyboard('{Backspace}');
+    expect(screen.getByTestId('words').querySelector('[data-active]')!.querySelectorAll('.text-text')).toHaveLength(words[0]!.length - 1);
+
+    await user.keyboard('{Tab}'); // restart: not typing yet, so the info is back
+    expect(document.documentElement.dataset.typing).toBeUndefined();
+    expect(screen.getByTestId('progress')).toHaveTextContent(`0/${words.length}`);
   });
 });

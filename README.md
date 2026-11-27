@@ -40,7 +40,7 @@ Requires Node 20+ (developed on Node 24).
 - **Statistics.** Averages, bests, totals, streaks and improvement, with WPM, accuracy, daily activity, weekly, monthly and consistency charts. Filter by 7/30/90 days or all time. Every past test can be reopened.
 - **Progression.** Keyed XP ledger (never double-awarded) for tests, lessons, daily challenges, streaks and personal bests. Levels and 13 achievements.
 - **Lessons.** 23 lessons across 10 categories. Recommendations come from your real per-key error rates, problem letter pairs, and speed-vs-accuracy pattern, and only appear after at least 3 tests and 500 characters.
-- **Practice.** Daily challenge (the same passage for everyone on a UTC date), custom passages (saved locally), and a weak-key drill.
+- **Custom text.** A test mode for your own passages (saved locally). The daily challenge (the same passage for everyone on a UTC date) and a weak-key drill live on the Lessons page.
 - **Settings.** Three themes, font family and size, caret style, sound, default mode, duration and word count, punctuation, numbers, difficulty, language, reduced motion, live WPM, and privacy. All persist.
 - **Accessibility.** Keyboard-first, visible focus rings, skip link, ARIA labels, live regions, `prefers-reduced-motion` plus a manual override, responsive down to phone width.
 

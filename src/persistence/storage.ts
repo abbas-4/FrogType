@@ -88,7 +88,7 @@ function record<T>(v: unknown, max: number, ok: (key: string, value: unknown) =>
   return Object.fromEntries(out);
 }
 
-const MODES = ['time', 'words', 'custom', 'lesson', 'daily'] as const;
+const MODES = ['time', 'words', 'custom', 'lesson', 'daily', 'zen'] as const;
 
 function sanitizeSample(v: unknown): Sample | null {
   if (!v || typeof v !== 'object') return null;

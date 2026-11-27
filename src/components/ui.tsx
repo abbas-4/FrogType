@@ -4,11 +4,12 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   return <section className={`rounded-lg bg-surface p-5 ${className}`}>{children}</section>;
 }
 
+/** big: the results wpm/acc pair, sized like Monkeytype's (number 2x its label, 64px at most). */
 export function Stat({ label, value, hint, big = false }: { label: string; value: ReactNode; hint?: string; big?: boolean }) {
   return (
     <div title={hint}>
-      <div className={big ? 'text-2xl leading-none text-sub sm:text-3xl xl:text-4xl' : 'text-xs tracking-wide text-sub'}>{label}</div>
-      <div className={`${big ? 'text-6xl leading-tight sm:text-7xl xl:text-8xl' : 'text-2xl'} tabular-nums text-brand`}>{value}</div>
+      <div className={big ? 'text-2xl leading-none text-sub sm:text-3xl xl:text-[2rem]' : 'text-xs tracking-wide text-sub'}>{label}</div>
+      <div className={`${big ? 'text-5xl leading-tight sm:text-6xl xl:text-[4rem]' : 'text-2xl'} tabular-nums text-brand`}>{value}</div>
     </div>
   );
 }
@@ -97,6 +98,16 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
     <header className="mb-6">
       <h1 className="text-2xl font-semibold text-text">{children}</h1>
       {sub && <p className="mt-1 text-sub">{sub}</p>}
+    </header>
+  );
+}
+
+/** Title + pass targets above a lesson-style player: centred, and faded out with the rest of the focus-mode chrome while typing. */
+export function PlayerHeader({ title, children }: { title: ReactNode; children: ReactNode }) {
+  return (
+    <header className="focus-hide mb-8 text-center">
+      <h1 className="text-xl font-semibold text-text">{title}</h1>
+      <p className="mt-1 text-sm text-sub">{children}</p>
     </header>
   );
 }

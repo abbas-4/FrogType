@@ -9,7 +9,6 @@ import { progressStore } from '../src/state/store';
 
 const pages = [
   ['Test', '/'],
-  ['Practice', '/practice'],
   ['Lessons', '/lessons'],
   ['Leaderboards', '/leaderboards'],
   ['Profile', '/profile'],
@@ -30,7 +29,7 @@ function renderAt(path: string) {
 }
 
 describe('main navigation', () => {
-  it('has an icon link with a tooltip for each of the six main pages, and marks the active one', () => {
+  it('has an icon link with a tooltip for each of the five main pages, and marks the active one', () => {
     renderAt('/lessons');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     for (const [name, href] of pages) {
@@ -40,6 +39,7 @@ describe('main navigation', () => {
     }
     expect(within(nav).queryByRole('link', { name: 'Statistics' })).toBeNull(); // reached from the profile page
     expect(within(nav).queryByRole('link', { name: 'Achievements' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Practice' })).toBeNull(); // split into the custom test mode and Lessons
     expect(within(nav).getByRole('link', { name: 'Lessons' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Test' })).not.toHaveAttribute('aria-current');
   });
@@ -57,7 +57,7 @@ describe('main navigation', () => {
     await user.click(button);
     expect(button).toHaveAttribute('aria-expanded', 'true');
     const menu = screen.getByRole('navigation', { name: 'Main menu' });
-    expect(within(menu).getAllByRole('link')).toHaveLength(6);
+    expect(within(menu).getAllByRole('link')).toHaveLength(5);
 
     await user.keyboard('{Escape}');
     expect(button).toHaveAttribute('aria-expanded', 'false');
@@ -121,5 +121,50 @@ describe('profile previews', () => {
     expect(screen.getByText('50.0')).toBeInTheDocument(); // avg wpm
     expect(screen.getByText('55')).toBeInTheDocument(); // words typed
     expect(screen.queryByText('Recent activity')).toBeNull();
+  });
+});
+
+describe('daily challenge', () => {
+  it('lives on the Lessons page and opens its player at /lessons/daily', async () => {
+    const [{ default: LessonsPage }, { default: DailyChallengePage }] = await Promise.all([import('../src/pages/LessonsPage'), import('../src/pages/DailyChallengePage')]);
+    render(
+      <MemoryRouter initialEntries={['/lessons']}>
+        <Routes>
+          <Route path="/lessons" element={<LessonsPage />} />
+          <Route path="/lessons/daily" element={<DailyChallengePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { name: 'Daily challenge' })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: /Start challenge|Try again/ }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Daily challenge' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'All lessons' })).toHaveAttribute('href', '/lessons');
+    expect(screen.getByTestId('typing-input')).toBeInTheDocument();
+  });
+});
+
+describe('custom test mode', () => {
+  it('picks a passage (saving it), types it, and "change text" returns to the picker', async () => {
+    const { TestPage } = await import('../src/pages/TestPage');
+    progressStore.set((p) => ({ ...p, customTexts: [] }), false);
+    render(
+      <MemoryRouter>
+        <TestPage />
+      </MemoryRouter>,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'custom' }));
+    expect(screen.queryByTestId('typing-input')).toBeNull();
+    await user.type(screen.getByLabelText('Title (optional)'), 'Frogs');
+    await user.type(screen.getByLabelText(/Passage/), 'green frogs jump');
+    await user.click(screen.getByRole('button', { name: 'Save passage' }));
+    expect(progressStore.get().customTexts.map((c) => c.title)).toEqual(['Frogs']);
+
+    await user.click(screen.getByRole('button', { name: 'Practice this text' }));
+    expect(screen.getByTestId('words')).toHaveTextContent('greenfrogsjump');
+
+    await user.click(screen.getByRole('button', { name: 'change text' }));
+    await user.click(screen.getByRole('button', { name: 'Frogs' })); // saved passage starts directly
+    expect(screen.getByTestId('words')).toHaveTextContent('greenfrogsjump');
   });
 });

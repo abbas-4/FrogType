@@ -128,11 +128,13 @@ describe('<ModeBar>', () => {
       await user.click(screen.getByRole('radio', { name: v }));
       expect(screen.getByRole('radio', { name: v })).toHaveAttribute('aria-checked', 'true');
     }
-    await user.click(screen.getByRole('radio', { name: 'custom' }));
+    await user.click(screen.getByRole('button', { name: 'zen' }));
+    expect(setMode).toHaveBeenCalledWith('zen');
+    await user.click(screen.getByRole('radio', { name: 'Custom' }));
     const input = screen.getByLabelText('Seconds (5–600)');
     await user.clear(input);
     await user.type(input, '45{Enter}');
     expect(settingsStore.get().timeDuration).toBe(45);
-    expect(screen.getByRole('radio', { name: '45' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Custom: 45' })).toHaveAttribute('aria-checked', 'true');
   });
 });
