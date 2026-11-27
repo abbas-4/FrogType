@@ -63,7 +63,7 @@ export default function SettingsPage() {
       <PageTitle>Settings</PageTitle>
 
       <nav aria-label="Settings sections" className="-mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-sub">
-        {[['account', 'Account'], ['privacy', 'Privacy'], ['data', 'Data'], ['appearance', 'Appearance'], ['test', 'Test']].map(([id, label]) => (
+        {[['account', 'Account'], ['appearance', 'Appearance'], ['test', 'Test'], ['privacy', 'Privacy'], ['data', 'Data']].map(([id, label]) => (
           <a key={id} href={`#${id}`} className="hover:text-text">
             {label}
           </a>
@@ -71,47 +71,6 @@ export default function SettingsPage() {
       </nav>
 
       {auth.user ? <AccountSettings /> : <GuestAccountSettings />}
-
-      <Card>
-        <h2 id="privacy" className="mb-2 text-lg font-medium text-text">Privacy</h2>
-        {auth.user ? (
-          <p className="mb-2 text-sm text-sub">Both are on for new accounts. Turn either off any time; a private profile is visible only to you.</p>
-        ) : (
-          <p className="mb-2 text-sm text-sub">New accounts start with both on; change them here once you sign in. Without an account nothing leaves this browser.</p>
-        )}
-        <fieldset disabled={!auth.profile} aria-busy={privacyBusy} className="disabled:opacity-60 [&:disabled_label]:cursor-default">
-          <Toggle label="Public profile" description="Others can view your username, avatar, bio, stats and achievements." checked={privacy.publicProfile} onChange={(v) => void setPrivacy({ publicProfile: v })} />
-          <Toggle label="Show me on leaderboards" description="Your username and best ranked results appear on global and friends boards." checked={privacy.showOnLeaderboard} onChange={(v) => void setPrivacy({ showOnLeaderboard: v })} />
-        </fieldset>
-        {privacyErr && <Notice tone="warn">{privacyErr}</Notice>}
-      </Card>
-
-      <Card>
-        <h2 id="data" className="mb-2 text-lg font-medium text-text">Data</h2>
-        {auth.user && (
-          <div className="mb-6 border-b border-surface-2 pb-6">
-            <AccountDataSettings />
-          </div>
-        )}
-        <h3 className="mb-1 font-medium text-text">This browser</h3>
-        <p className="mb-3 text-sm text-sub">Remove all tests, XP, achievements and lesson progress stored in this browser. Your cloud account (if any) is not affected.</p>
-        {confirmClear ? (
-          <div className="flex gap-2">
-            <Button
-              variant="danger"
-              onClick={() => {
-                progressStore.set(emptyProgress());
-                setConfirmClear(false);
-              }}
-            >
-              Yes, delete local data
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmClear(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <Button variant="danger" onClick={() => setConfirmClear(true)}>Clear local data…</Button>
-        )}
-      </Card>
 
       <Card>
         <h2 id="appearance" className="mb-2 text-lg font-medium text-text">Appearance</h2>
@@ -161,6 +120,46 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <Card>
+        <h2 id="privacy" className="mb-2 text-lg font-medium text-text">Privacy</h2>
+        {auth.user ? (
+          <p className="mb-2 text-sm text-sub">Both are on for new accounts. Turn either off any time; a private profile is visible only to you.</p>
+        ) : (
+          <p className="mb-2 text-sm text-sub">New accounts start with both on; change them here once you sign in. Without an account nothing leaves this browser.</p>
+        )}
+        <fieldset disabled={!auth.profile} aria-busy={privacyBusy} className="disabled:opacity-60 [&:disabled_label]:cursor-default">
+          <Toggle label="Public profile" description="Others can view your username, avatar, bio, stats and achievements." checked={privacy.publicProfile} onChange={(v) => void setPrivacy({ publicProfile: v })} />
+          <Toggle label="Show me on leaderboards" description="Your username and best ranked results appear on global and friends boards." checked={privacy.showOnLeaderboard} onChange={(v) => void setPrivacy({ showOnLeaderboard: v })} />
+        </fieldset>
+        {privacyErr && <Notice tone="warn">{privacyErr}</Notice>}
+      </Card>
+
+      <Card>
+        <h2 id="data" className="mb-2 text-lg font-medium text-text">Data</h2>
+        {auth.user && (
+          <div className="mb-6 border-b border-surface-2 pb-6">
+            <AccountDataSettings />
+          </div>
+        )}
+        <h3 className="mb-1 font-medium text-text">This browser</h3>
+        <p className="mb-3 text-sm text-sub">Remove all tests, XP, achievements and lesson progress stored in this browser. Your cloud account (if any) is not affected.</p>
+        {confirmClear ? (
+          <div className="flex gap-2">
+            <Button
+              variant="danger"
+              onClick={() => {
+                progressStore.set(emptyProgress());
+                setConfirmClear(false);
+              }}
+            >
+              Yes, delete local data
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmClear(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <Button variant="danger" onClick={() => setConfirmClear(true)}>Clear local data…</Button>
+        )}
+      </Card>
     </div>
   );
 }

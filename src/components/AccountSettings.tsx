@@ -4,12 +4,11 @@ import { Field, PasswordField, PasswordRules } from './forms';
 import { Button, Card, Notice } from './ui';
 import { useAuth } from '../state/auth';
 import { pushToast } from '../state/toasts';
-import { changeEmail, changePassword, deleteAccount, EMAIL_RE, MIN_PASSWORD_LENGTH, passwordProblem, signOut } from '../services/social';
+import { changeEmail, changePassword, deleteAccount, EMAIL_RE, MIN_PASSWORD_LENGTH, passwordProblem } from '../services/social';
 import { exportMyData } from '../services/cloud';
 import { errorMessage, isSupabaseConfigured, landingAuth } from '../services/supabase';
 import { clearDecision } from '../services/sync';
 import { removeProgress } from '../persistence/storage';
-import { useProgress } from '../state/store';
 
 type Msg = { text: string; tone: 'info' | 'warn' } | null;
 
@@ -45,7 +44,7 @@ export function GuestAccountSettings() {
   );
 }
 
-/** Account, email, password and sign-out for a signed-in user. Privacy and data live in their own cards on the page. */
+/** Email and password for a signed-in user. Sign-out lives in the navbar account menu; privacy and data have their own cards. */
 export function AccountSettings() {
   const auth = useAuth();
   const user = auth.user!;
@@ -59,7 +58,6 @@ export function AccountSettings() {
       <div className="space-y-8 divide-y divide-surface-2 [&>*]:pt-6 [&>*:first-child]:pt-0">
         <EmailSection email={user.email ?? ''} pendingEmail={user.new_email} />
         <PasswordSection email={user.email ?? ''} />
-        <SignOutSection userId={user.id} />
       </div>
     </Card>
   );
@@ -192,50 +190,6 @@ function PasswordSection({ email }: { email: string }) {
         </Button>
         {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
       </form>
-    </section>
-  );
-}
-
-function SignOutSection({ userId }: { userId: string }) {
-  const pending = useProgress().pendingSync.length;
-  const [msg, setMsg] = useState<string | null>(null);
-  const run = async (forget: boolean) => {
-    setMsg(null);
-    try {
-      await signOut();
-      if (forget) {
-        removeProgress(userId);
-        clearDecision(userId);
-      }
-      pushToast('Signed out', forget ? 'Your data was removed from this browser. Your account is unchanged.' : undefined);
-    } catch (e) {
-      setMsg(errorMessage(e));
-    }
-  };
-  return (
-    <section aria-labelledby="signout-h">
-      <h3 id="signout-h" className={h3}>
-        Sign out
-      </h3>
-      <p className="mt-1 text-sm text-sub">On a shared computer, also remove your progress from this browser. It stays safe in your account.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="ghost" onClick={() => void run(false)}>
-          Sign out
-        </Button>
-        <Button variant="ghost" disabled={pending > 0} onClick={() => void run(true)}>
-          Sign out and remove my data from this browser
-        </Button>
-      </div>
-      {pending > 0 && (
-        <p className="mt-2 text-xs text-sub">
-          Removing local data is available once your {pending} queued result{pending === 1 ? ' has' : 's have'} uploaded (see Profile → Cloud sync).
-        </p>
-      )}
-      {msg && (
-        <div className="mt-2">
-          <Notice tone="warn">{msg}</Notice>
-        </div>
-      )}
     </section>
   );
 }

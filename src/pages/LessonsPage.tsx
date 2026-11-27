@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, Check, CheckCircle2, Circle, Crosshair, Lightbulb } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, CheckCircle2, Circle, Clock, Crosshair, Flame, Lightbulb, Play, Star, Target, Trophy } from 'lucide-react';
 import { Button, Card, PageTitle } from '../components/ui';
 import { analyze } from '../domain/analysis';
 import { dailyChallenge } from '../domain/daily';
 import { utcDay } from '../domain/dates';
 import { categories, lessons } from '../domain/lessons';
+import { XP } from '../domain/progression';
+import { calcStreaks } from '../domain/streaks';
 import { useProgress } from '../state/store';
+import type { Progress } from '../types';
 
 export default function LessonsPage() {
   const progress = useProgress();
@@ -22,7 +25,7 @@ export default function LessonsPage() {
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-2">
-        <DailyCard daily={progress.daily} />
+        <DailyCard daily={progress.daily} history={progress.history} />
         <Card>
           <h2 className="flex items-center gap-2 text-lg font-medium text-text">
             <Lightbulb size={18} className="text-brand" /> Recommended for you
@@ -119,55 +122,120 @@ export default function LessonsPage() {
   );
 }
 
-function DailyCard({ daily }: { daily: ReturnType<typeof useProgress>['daily'] }) {
+/** Ticks every 30s so the countdown and the UTC day roll over without a reload. */
+function useNow() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+/** Time until the next UTC midnight, when a new daily challenge starts. */
+function resetsIn(now: Date): string {
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  const mins = Math.max(0, Math.floor((next - now.getTime()) / 60_000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m left` : m > 0 ? `${m}m left` : '<1m left';
+}
+
+function DailyCard({ daily, history }: { daily: Progress['daily']; history: Progress['history'] }) {
   const navigate = useNavigate();
-  const today = utcDay(new Date());
+  const now = useNow();
+  const today = utcDay(now);
   const challenge = useMemo(() => dailyChallenge(today), [today]);
   const record = daily[today];
-  const recent = Object.values(daily).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
+  const all = Object.values(daily);
+  const recent = [...all].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
+  const attempts = history.filter((t) => t.dailyDate === today).length;
+  const streak = calcStreaks(all.filter((d) => d.completed).map((d) => d.date), today).current;
+  const best = all.length ? Math.round(Math.max(...all.map((d) => d.bestWpm))) : null;
 
   return (
-    <Card>
-      <h2 className="flex items-center gap-2 text-lg font-medium text-text">
-        <CalendarDays size={18} className="text-brand" /> Daily challenge
-      </h2>
-      <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
-        <div>
-          <dt className="text-sub">target</dt>
-          <dd className="text-text">{challenge.targetWpm} wpm</dd>
-        </div>
-        <div>
-          <dt className="text-sub">accuracy</dt>
-          <dd className="text-text">{challenge.targetAccuracy}%</dd>
-        </div>
-        <div>
-          <dt className="text-sub">your best</dt>
-          <dd className="text-text">{record ? `${Math.round(record.bestWpm)} wpm` : '—'}</dd>
-        </div>
-      </dl>
-      <div className="mt-4 flex items-center gap-3">
-        <Button onClick={() => navigate('/lessons/daily')}>{record ? 'Try again' : 'Start challenge'}</Button>
-        {record?.completed && (
-          <span className="inline-flex items-center gap-1 text-sm text-brand">
-            <Check size={16} /> Completed
-          </span>
+    <Card className="flex flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-medium text-text">
+          <CalendarDays size={18} className="text-brand" /> Daily challenge
+          {record?.completed && (
+            <span className="inline-flex items-center gap-1 text-sm font-normal text-brand">
+              <Check size={16} /> Completed
+            </span>
+          )}
+        </h2>
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 text-xs tabular-nums text-sub" title="Time until the next challenge (resets at 00:00 UTC)">
+          <Clock size={14} className="text-brand" /> {resetsIn(now)}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col justify-center py-6">
+        <dl className="grid grid-cols-3 divide-x divide-surface-2">
+          <div className="flex items-center gap-4 pr-3">
+            <div className="hidden size-16 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-brand lg:flex">
+              <Target size={32} aria-hidden />
+            </div>
+            <PrimaryStat label="Target speed" value={challenge.targetWpm} unit="wpm" />
+          </div>
+          <div className="px-3 lg:px-5">
+            <PrimaryStat label="Accuracy" value={challenge.targetAccuracy} unit="%" />
+          </div>
+          <div className="pl-3 lg:pl-5">
+            <PrimaryStat label="Today" value={attempts} unit={attempts === 1 ? 'attempt' : 'attempts'} />
+          </div>
+        </dl>
+
+        <dl className="mt-6 grid grid-cols-1 gap-3 border-t border-surface-2 pt-6 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
+          <SecondaryStat icon={<Flame size={18} />} value={`${streak} day streak`} label={record?.completed ? 'Done for today' : streak > 0 ? 'Keep it going!' : 'Pass one to start'} />
+          <SecondaryStat icon={<Trophy size={18} />} value={best === null ? '—' : `${best} wpm`} label={record ? `Personal best · today ${Math.round(record.bestWpm)}` : 'Personal best'} />
+          <SecondaryStat icon={<Star size={18} />} value={`+${XP.daily} XP`} label={record?.completed ? 'Earned today' : 'Reward'} />
+        </dl>
+      </div>
+
+      <div>
+        <Button className="w-full py-3 text-base" onClick={() => navigate('/lessons/daily')}>
+          <Play size={16} aria-hidden /> {record ? 'Try again' : 'Start challenge'} <ArrowRight size={16} aria-hidden />
+        </Button>
+        {recent.length > 0 && (
+          <details className="mt-4 text-sm">
+            <summary className="cursor-pointer text-xs uppercase tracking-wider text-sub hover:text-text">Recent challenges</summary>
+            <ul className="mt-2 space-y-1">
+              {recent.map((d) => (
+                <li key={d.date} className="flex justify-between">
+                  <span className="text-sub">{d.date}</span>
+                  <span className={d.completed ? 'text-brand' : 'text-text'}>
+                    {Math.round(d.bestWpm)} wpm · {Math.floor(d.bestAccuracy)}% {d.completed ? '✓' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
       </div>
-      {recent.length > 0 && (
-        <div className="mt-5">
-          <h3 className="text-xs uppercase tracking-wider text-sub">Recent challenges</h3>
-          <ul className="mt-2 space-y-1 text-sm">
-            {recent.map((d) => (
-              <li key={d.date} className="flex justify-between">
-                <span className="text-sub">{d.date}</span>
-                <span className={d.completed ? 'text-brand' : 'text-text'}>
-                  {Math.round(d.bestWpm)} wpm · {Math.floor(d.bestAccuracy)}% {d.completed ? '✓' : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </Card>
+  );
+}
+
+function PrimaryStat({ label, value, unit }: { label: string; value: number; unit: string }) {
+  return (
+    <div className="flex min-w-0 flex-col-reverse">
+      <dt className="mt-1 truncate text-xs text-sub lg:text-sm">{label}</dt>
+      <dd className="whitespace-nowrap text-2xl font-semibold tabular-nums text-text lg:text-3xl">
+        {value}
+        <span className="ml-1 text-sm font-normal text-sub lg:text-base">{unit}</span>
+      </dd>
+    </div>
+  );
+}
+
+function SecondaryStat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 text-brand" aria-hidden>{icon}</span>
+      <div className="flex min-w-0 flex-col-reverse">
+        <dt className="text-xs text-sub">{label}</dt>
+        <dd className="font-medium tabular-nums text-text">{value}</dd>
+      </div>
+    </div>
   );
 }
