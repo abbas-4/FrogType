@@ -12,12 +12,15 @@ export type WordSource =
       /** ranked tests: fetch a server-issued passage; when it arrives before the first keystroke it replaces the local words */
       challenge?: () => Promise<{ id: string; words: string[] } | null>;
     }
-  | { kind: 'fixed'; words: string[] };
+  /** editable: Backspace can step back over any space (lessons) */
+  | { kind: 'fixed'; words: string[]; editable?: boolean }
+  | { kind: 'zen' };
 
 const BATCH = 60;
 
 function initialWords(src: WordSource, rng: () => number): { words: string[]; limit: Limit } {
-  if (src.kind === 'fixed') return { words: src.words, limit: { kind: 'words' } };
+  if (src.kind === 'zen') return { words: [''], limit: { kind: 'zen' } };
+  if (src.kind === 'fixed') return { words: src.words, limit: { kind: 'words', editable: src.editable } };
   const n = src.limit.kind === 'time' ? BATCH : src.count;
   return { words: generateWords(n, src.options, rng), limit: src.limit };
 }
@@ -116,6 +119,7 @@ export function useTypingTest(source: WordSource, sourceKey: string) {
   const type = useCallback((char: string) => dispatch({ type: 'char', char, now: performance.now() }), []);
   const space = useCallback(() => dispatch({ type: 'space', now: performance.now() }), []);
   const backspace = useCallback((word: boolean) => dispatch({ type: 'backspace', word, now: performance.now() }), []);
+  const finish = useCallback(() => dispatch({ type: 'finish', now: performance.now() }), []);
 
-  return { state, live, running, finished: state.finishedAt !== null, type, space, backspace, restart, challengeId: state.challengeId, consumeChallenge };
+  return { state, live, running, finished: state.finishedAt !== null, type, space, backspace, finish, restart, challengeId: state.challengeId, consumeChallenge };
 }

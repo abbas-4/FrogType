@@ -10,6 +10,8 @@ export function modeLabel(r: Pick<TestResult, 'mode' | 'mode2' | 'lessonId' | 'd
       return `custom ${r.mode2} words`;
     case 'lesson':
       return `lesson ${r.lessonId ?? ''}`;
+    case 'zen':
+      return 'zen';
     case 'daily':
       return `daily ${r.dailyDate ?? ''}`;
   }

@@ -1,4 +1,4 @@
-export type TestMode = 'time' | 'words' | 'custom' | 'lesson' | 'daily';
+export type TestMode = 'time' | 'words' | 'custom' | 'lesson' | 'daily' | 'zen';
 export type Language = 'english' | 'spanish' | 'german';
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type CaretStyle = 'line' | 'block' | 'underline' | 'off';

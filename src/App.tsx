@@ -1,12 +1,13 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { TestPage } from './pages/TestPage';
 import './services/sync';
 
-const PracticePage = lazy(() => import('./pages/PracticePage'));
 const LessonsPage = lazy(() => import('./pages/LessonsPage'));
 const LessonPlayerPage = lazy(() => import('./pages/LessonPlayerPage'));
+const DailyChallengePage = lazy(() => import('./pages/DailyChallengePage'));
+const WeakKeyDrillPage = lazy(() => import('./pages/WeakKeyDrillPage'));
 const StatsPage = lazy(() => import('./pages/StatsPage'));
 const HistoryDetailPage = lazy(() => import('./pages/HistoryDetailPage'));
 const LeaderboardsPage = lazy(() => import('./pages/LeaderboardsPage'));
@@ -25,8 +26,11 @@ export function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<TestPage />} />
-            <Route path="practice" element={<PracticePage />} />
+            {/* Practice was split up: custom text is a test mode, drill and daily challenge live under Lessons */}
+            <Route path="practice" element={<Navigate to="/" replace />} />
             <Route path="lessons" element={<LessonsPage />} />
+            <Route path="lessons/daily" element={<DailyChallengePage />} />
+            <Route path="lessons/drill" element={<WeakKeyDrillPage />} />
             <Route path="lessons/:id" element={<LessonPlayerPage />} />
             <Route path="stats" element={<StatsPage />} />
             <Route path="history/:id" element={<HistoryDetailPage />} />

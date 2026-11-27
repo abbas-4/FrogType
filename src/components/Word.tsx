@@ -31,7 +31,7 @@ export const Word = memo(function Word({ word, input, active, committed }: Props
       className={`word mr-[0.6em] inline-block whitespace-nowrap ${wrong ? 'underline decoration-error decoration-2 underline-offset-[0.25em]' : ''}`}
       data-active={active || undefined}
     >
-      {letters}
+      {letters.length ? letters : '\u200b' /* empty zen word: keep line height for the caret */}
     </span>
   );
 });

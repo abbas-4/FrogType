@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BookOpen, Keyboard, LogOut, Medal, Menu, Settings as SettingsIcon, Target, User, X } from 'lucide-react';
+import { BookOpen, Keyboard, LogOut, Medal, Menu, Settings as SettingsIcon, User, X } from 'lucide-react';
 import { Logo } from './Logo';
 import { Avatar } from './Avatar';
 import { AccountMenu } from './AccountMenu';
@@ -14,7 +14,6 @@ import { levelFromXp, totalXp } from '../domain/progression';
 
 const nav = [
   { to: '/', label: 'Test', icon: Keyboard, end: true },
-  { to: '/practice', label: 'Practice', icon: Target },
   { to: '/lessons', label: 'Lessons', icon: BookOpen },
   { to: '/leaderboards', label: 'Leaderboards', icon: Medal },
   { to: '/profile', label: 'Profile', icon: User },

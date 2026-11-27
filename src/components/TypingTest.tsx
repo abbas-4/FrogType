@@ -146,7 +146,7 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, o
   const handleChar = (ch: string) => {
     const word = state.words[state.wordIndex] ?? '';
     const input = state.inputs[state.wordIndex] ?? '';
-    playKey(settings.sound, ch !== word[input.length]);
+    playKey(settings.sound, state.limit.kind !== 'zen' && ch !== word[input.length]);
     t.type(ch);
   };
 
@@ -155,6 +155,11 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, o
     if (e.key === 'Tab') {
       e.preventDefault();
       restart(false);
+      return;
+    }
+    if (e.key === 'Enter' && e.shiftKey && state.limit.kind === 'zen') {
+      e.preventDefault();
+      t.finish();
       return;
     }
     if (e.key === 'Escape') {
@@ -229,7 +234,9 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, o
   const progressLabel =
     state.limit.kind === 'time'
       ? String(running ? remaining : state.limit.seconds)
-      : `${Math.min(state.wordIndex, state.words.length)}/${state.words.length}`;
+      : state.limit.kind === 'zen'
+        ? String(state.wordIndex)
+        : `${Math.min(state.wordIndex, state.words.length)}/${state.words.length}`;
 
   const caretClass = {
     line: 'bg-brand',
@@ -301,6 +308,11 @@ export function TypingTest({ source, sourceKey, meta, onComplete, resultExtra, o
         </button>
         {notice && <p role="status" className="text-sm text-error">{notice}</p>}
         <p className="focus-hide text-xs text-sub">
+          {state.limit.kind === 'zen' && (
+            <>
+              <kbd className="rounded bg-surface px-1.5 py-0.5">shift + enter</kbd> finish ·{' '}
+            </>
+          )}
           <kbd className="rounded bg-surface px-1.5 py-0.5">tab</kbd> restart · <kbd className="rounded bg-surface px-1.5 py-0.5">esc</kbd> leave typing area ·{' '}
           <kbd className="rounded bg-surface px-1.5 py-0.5">ctrl/alt + backspace</kbd> delete word
         </p>

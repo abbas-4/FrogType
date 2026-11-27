@@ -7,6 +7,19 @@ function run(s: EngineState, actions: EngineAction[]) {
 const typeWord = (w: string, t0: number, step = 100): EngineAction[] => [...w].map((char, i) => ({ type: 'char', char, now: t0 + i * step }));
 
 describe('typing engine', () => {
+  it('zen: typed text is the passage, every key is correct, and it ends only on finish', () => {
+    let s = run(initEngine([''], { kind: 'zen' }), [...typeWord('hi', 0), { type: 'space', now: 200 }, ...typeWord('yo', 300)]);
+    expect(s.words).toEqual(['hi', 'yo']);
+    expect(s.correctKeystrokes).toBe(s.keystrokes);
+    s = run(s, [{ type: 'backspace', word: true }, { type: 'backspace', word: false }]);
+    expect(s.wordIndex).toBe(0); // free to edit earlier words
+    s = run(s, [{ type: 'space', now: 500 }, ...typeWord('ok', 600), { type: 'tick', now: 1500 }]);
+    expect(s.finishedAt).toBeNull();
+    s = engineReducer(s, { type: 'finish', now: 2000 });
+    expect(s.finishedAt).toBe(2000);
+    expect(finalStats(s)).toMatchObject({ accuracy: 100, wordsTyped: 2, valid: true });
+  });
+
   it('does not start the timer until the first keystroke', () => {
     let s = initEngine(['hello'], { kind: 'time', seconds: 15 });
     expect(s.startedAt).toBeNull();
@@ -30,6 +43,19 @@ describe('typing engine', () => {
     expect(s.correctKeystrokes).toBe(2);
     expect(s.charStats.b).toEqual([2, 1]);
     expect(s.bigramErrors.ab).toBe(1);
+  });
+
+  it('editable passages (lessons) let Backspace delete any space, keeping position, stats and completion right', () => {
+    let s = run(initEngine(['ab', 'c.', 'de'], { kind: 'words', editable: true }), [...typeWord('ab', 0), { type: 'space', now: 200 }]);
+    s = engineReducer(s, { type: 'backspace', word: false });
+    expect([s.wordIndex, s.inputs[0]]).toEqual([0, 'ab']); // space deleted, back at the end of a correct word
+    s = run(s, [{ type: 'backspace', word: false }, { type: 'char', char: 'b', now: 300 }, { type: 'space', now: 400 }, ...typeWord('c.', 500)]);
+    s = run(s, [{ type: 'space', now: 700 }, { type: 'backspace', word: false }, { type: 'backspace', word: false }]);
+    expect([s.wordIndex, s.inputs[1]]).toEqual([1, 'c']); // space then punctuation removed
+    expect(liveStats(s, 800).accuracy).toBe(100); // deleting is not a keystroke
+    s = run(s, [{ type: 'char', char: '.', now: 800 }, { type: 'space', now: 900 }, ...typeWord('de', 1000)]);
+    expect(s.finishedAt).toBe(1100);
+    expect(finalStats(s)).toMatchObject({ wordsTyped: 3, chars: { correct: 6, incorrect: 0, extra: 0, missed: 0 } });
   });
 
   it('only allows backspacing into a previous word that has an error', () => {

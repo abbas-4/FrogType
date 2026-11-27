@@ -1,7 +1,9 @@
 import type { CharStats, Sample } from '../types';
 import { calcAccuracy, calcConsistency, calcWpm, countChars, round2 } from './metrics';
 
-export type Limit = { kind: 'time'; seconds: number } | { kind: 'words' };
+/** zen: no target text; whatever is typed becomes the passage and the test ends on an explicit 'finish'. */
+/** words.editable: Backspace may reopen any committed word (lessons); otherwise only words with a mistake, as the ranked replay assumes. */
+export type Limit = { kind: 'time'; seconds: number } | { kind: 'words'; editable?: boolean } | { kind: 'zen' };
 
 export interface EngineState {
   words: string[];
@@ -30,6 +32,7 @@ export type EngineAction =
   | { type: 'backspace'; word: boolean; now?: number }
   | { type: 'tick'; now: number }
   | { type: 'timeout' }
+  | { type: 'finish'; now: number }
   | { type: 'append'; words: string[] }
   | { type: 'reset'; words: string[]; limit: Limit; challengeId?: string | null };
 
@@ -106,6 +109,12 @@ function bump(stats: CharStats, ch: string, error: boolean): CharStats {
 }
 
 export function engineReducer(s: EngineState, a: EngineAction): EngineState {
+  const next = step(s, a);
+  // Zen: the passage is exactly what was typed, so every keystroke is correct.
+  return next.limit.kind === 'zen' && next.words !== next.inputs ? { ...next, words: next.inputs } : next;
+}
+
+function step(s: EngineState, a: EngineAction): EngineState {
   switch (a.type) {
     case 'reset':
       return initEngine(a.words, a.limit, a.challengeId ?? null);
@@ -119,6 +128,9 @@ export function engineReducer(s: EngineState, a: EngineAction): EngineState {
       }
       return Math.floor(elapsed / 1000) > s.samples.length ? fillSamples(s, elapsed, false) : s;
     }
+    case 'finish':
+      if (s.startedAt === null || s.finishedAt !== null) return s;
+      return finish(s, a.now);
     case 'timeout':
       if (s.startedAt === null || s.finishedAt !== null || s.limit.kind !== 'time') return s;
       return finish(s, s.startedAt + s.limit.seconds * 1000);
@@ -132,7 +144,7 @@ export function engineReducer(s: EngineState, a: EngineAction): EngineState {
       if (s.limit.kind === 'time' && a.now - startedAt >= s.limit.seconds * 1000) {
         return finish(s, startedAt + s.limit.seconds * 1000);
       }
-      const expected = word[input.length];
+      const expected = s.limit.kind === 'zen' ? a.char : word[input.length];
       const correct = a.char === expected;
       const inputs = s.inputs.slice();
       const nextInput = input + a.char;
@@ -191,8 +203,9 @@ export function engineReducer(s: EngineState, a: EngineAction): EngineState {
         return { ...s, inputs, keylog };
       }
       const prev = s.wordIndex - 1;
-      // Only allow stepping back into a word that has a mistake.
-      if (prev >= 0 && inputs[prev] !== s.words[prev]) {
+      // Step back over the space: always in zen and editable passages, otherwise only into a word that has a mistake.
+      const free = s.limit.kind === 'zen' || (s.limit.kind === 'words' && s.limit.editable === true);
+      if (prev >= 0 && (free || inputs[prev] !== s.words[prev])) {
         if (a.word) inputs[prev] = '';
         return { ...s, inputs, wordIndex: prev, keylog };
       }
