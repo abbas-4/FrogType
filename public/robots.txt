@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+# Account-specific, auth and per-user pages: nothing useful to index
+Disallow: /settings
+Disallow: /profile
+Disallow: /stats
+Disallow: /history/
+Disallow: /achievements
+Disallow: /signin
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /u/
+
+Sitemap: https://frogtype.me/sitemap.xml
